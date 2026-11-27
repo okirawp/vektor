@@ -16,6 +16,9 @@ public class MainActivity extends Activity implements InputManager.InputDeviceLi
  static boolean isForeground(){return visible.get()!=null;}
  PadView pad;
  View connectionLamp;
+ AppPicker picker;
+ Bundle restoredPicker;
+ boolean pickerOpen,pickerMigration;
  View controllerHelp;
  TextView controllerTitle,controllerStatus,padFeedback;
  int padId=-1, identityVersion;
@@ -32,16 +35,18 @@ public class MainActivity extends Activity implements InputManager.InputDeviceLi
 
 boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog exitDialog;ActionIcon themeButton;
  Ui ui;LinearLayout body;boolean renderedReady,renderedSession,renderedLegacy;String renderedGame="";
- void refreshConnection(){MapperService s=MapperService.current();if(body==null||renderedReady!=(s!=null)||renderedSession!=(s!=null&&s.sessionActive())||!renderedGame.equals(Profiles.selected(this))||renderedLegacy!=Profiles.hasLegacy(this))render();}
- @Override public void onCreate(Bundle state){if(state!=null){profilePage=state.getString("profile_page","");supportPage=state.getString("support_page","");helpPage=state.getInt("guide_step",0);supportParent=state.getString("support_parent","");java.util.ArrayList<String> log=state.getStringArrayList("input_log");if(log!=null)inputLog.addAll(log);}ui=new Ui(this);setTheme(ui.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(state);if(android.os.Build.VERSION.SDK_INT>=34)installBackPreview();else if(android.os.Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,this::requestExit);render();}
+ void refreshConnection(){if(pickerOpen&&body!=null)return;MapperService s=MapperService.current();if(body==null||renderedReady!=(s!=null)||renderedSession!=(s!=null&&s.sessionActive())||!renderedGame.equals(Profiles.selected(this))||renderedLegacy!=Profiles.hasLegacy(this))render();}
+ @Override public void onCreate(Bundle state){if(state!=null){restoredPicker=state.getBundle("picker_state");pickerOpen=state.getBoolean("picker_open");pickerMigration=state.getBoolean("picker_migration");launchGuideAfterPick=state.getBoolean("picker_guided");profilePage=state.getString("profile_page","");supportPage=state.getString("support_page","");helpPage=state.getInt("guide_step",0);supportParent=state.getString("support_parent","");java.util.ArrayList<String> log=state.getStringArrayList("input_log");if(log!=null)inputLog.addAll(log);}ui=new Ui(this);setTheme(ui.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(state);if(android.os.Build.VERSION.SDK_INT>=34)installBackPreview();else if(android.os.Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,this::requestExit);render();}
  @Override protected void onResume(){super.onResume();visible=new java.lang.ref.WeakReference<>(this);MapperService s=MapperService.current();if(s!=null)s.onMainForeground();refreshConnection();if(!listeningForControllers){getSystemService(InputManager.class).registerInputDeviceListener(this,new android.os.Handler(getMainLooper()));listeningForControllers=true;}updateControllerStatus();}
  @Override protected void onPause(){if(listeningForControllers){getSystemService(InputManager.class).unregisterInputDeviceListener(this);listeningForControllers=false;}if(visible.get()==this)visible.clear();MapperService s=MapperService.current();if(s!=null&&!isChangingConfigurations())s.onMainBackground();super.onPause();}
  @Override protected void onSaveInstanceState(Bundle state){
   super.onSaveInstanceState(state);
+  if(picker!=null)state.putBundle("picker_state",picker.save());
+  state.putBoolean("picker_open",pickerOpen);state.putBoolean("picker_migration",pickerMigration);state.putBoolean("picker_guided",launchGuideAfterPick);
   state.putStringArrayList("input_log",new ArrayList<>(inputLog));state.putString("profile_page",profilePage);
   state.putString("support_parent",supportParent);state.putString("support_page",supportPage);state.putInt("guide_step",helpPage);
  }
- @Override protected void onRestart(){super.onRestart();render();}
+ @Override protected void onRestart(){super.onRestart();if(!pickerOpen)render();}
  String profilePage="";
  @android.annotation.TargetApi(34)
  private void installBackPreview(){
@@ -69,7 +74,14 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   connectionLamp=null;ui=new Ui(this);getWindow().setStatusBarColor(ui.background);getWindow().setNavigationBarColor(ui.background);
   boolean compact=getResources().getConfiguration().screenHeightDp<420;
   getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(ui.background));body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setBackgroundColor(ui.background);body.setPadding(ui.dp(20),ui.dp(compact?6:14),ui.dp(20),ui.dp(compact?6:16));setContentView(body);applySystemBarStyle();
-  body.setOnApplyWindowInsetsListener((v,insets)->{int left,top,right,bottom;if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());left=bars.left;top=bars.top;right=bars.right;bottom=bars.bottom;WindowInsetsController controller=v.getWindowInsetsController();if(controller!=null)controller.setSystemBarsAppearance(ui.dark?0:WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);}else{left=insets.getSystemWindowInsetLeft();top=insets.getSystemWindowInsetTop();right=insets.getSystemWindowInsetRight();bottom=insets.getSystemWindowInsetBottom();int light=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;int flags=v.getSystemUiVisibility();v.setSystemUiVisibility(ui.dark?flags&~light:flags|light);}int margin=Math.max(ui.dp(16),(getResources().getDisplayMetrics().widthPixels-left-right-ui.dp(1120))/2);v.setPadding(left+margin,top+ui.dp(compact?6:14),right+margin,bottom+ui.dp(compact?6:16));return insets;});body.requestApplyInsets();
+  body.setOnApplyWindowInsetsListener((v,insets)->{int left,top,right,bottom;if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());left=bars.left;top=bars.top;right=bars.right;bottom=pickerOpen?Math.max(bars.bottom,insets.getInsets(WindowInsets.Type.ime()).bottom):bars.bottom;WindowInsetsController controller=v.getWindowInsetsController();if(controller!=null)controller.setSystemBarsAppearance(ui.dark?0:WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);}else{left=insets.getSystemWindowInsetLeft();top=insets.getSystemWindowInsetTop();right=insets.getSystemWindowInsetRight();bottom=insets.getSystemWindowInsetBottom();int light=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;int flags=v.getSystemUiVisibility();v.setSystemUiVisibility(ui.dark?flags&~light:flags|light);}int margin=Math.max(ui.dp(16),(getResources().getDisplayMetrics().widthPixels-left-right-ui.dp(1120))/2);v.setPadding(left+margin,top+ui.dp(compact?6:14),right+margin,bottom+ui.dp(compact?6:16));return insets;});body.requestApplyInsets();
+  if(pickerOpen){
+   Bundle state=picker==null?restoredPicker:picker.save();
+   restoredPicker=null;
+   picker=new AppPicker(this,pickerMigration,launchGuideAfterPick,state);
+   picker.load();
+   return;
+  }
   LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);
   LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);ImageView brandImage=new ImageView(this);brandImage.setImageResource(dev.kolmapper.R.drawable.brand_asset);brandImage.setBackground(ui.shape(0xFF0B1119,11));brandImage.setClipToOutline(true);brandImage.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);brand.addView(brandImage,new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40)));
   TextView title=ui.text("Vektör",28,true);title.setLetterSpacing(-.035f);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(0,-2,1);titleLp.leftMargin=ui.dp(10);brand.addView(title,titleLp);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
@@ -101,7 +113,11 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   }else{
    profilePage="";
    addController(rows);
-   if(!ready)rows.addView(footerLink("Kontrol iznini aç",this::explainPermission));
+   if(!ready){
+    LinearLayout permissions=ui.card(rows);
+    permissions.addView(ui.caption("Erişilebilirlik izni, kol girişini seçtiğin uygulamada ekran dokunuşuna çevirir."));
+    ui.addButton(permissions,"Kontrol iznini aç",true,this::explainPermission);
+   }
    rows.addView(ui.text("Uygulamalarım",22,true));
    LinearLayout pair=null;
    boolean wide=getResources().getConfiguration().screenWidthDp>=840;
@@ -119,7 +135,6 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
     if(wide && index%2==0 && index==packages.size()-1)pair.addView(new View(this),new LinearLayout.LayoutParams(0,1,1));
    }
    if(packages.isEmpty()){
-    rows.addView(new StoryArt(this,ui,0),new LinearLayout.LayoutParams(-1,ui.dp(86)));
     rows.addView(ui.caption("Kontrollerini eşlemek için ilk uygulamanı ekle."));
    }
    TextView add=footerLink("＋  Yeni uygulama ekle",()->chooseGame(false));
@@ -202,9 +217,12 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   if(!expanded)heading.addView(footerLink("Giriş testi  ›",()->openSupport("controller")));
   card.addView(heading);
   card.addView(controllerStatus);
-  pad=new PadView(this,ui);card.addView(pad,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:Ui.HOME_PAD_HEIGHT)));
+  pad=new PadView(this,ui,expanded);card.addView(pad,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:Ui.HOME_PAD_HEIGHT)));
   padFeedback=ui.caption("");padFeedback.setGravity(Gravity.CENTER);
-  if(expanded)card.addView(padFeedback);
+  if(expanded){
+   card.addView(padFeedback);
+   card.addView(footerLink("Görünümü sıfırla",()->pad.resetView()));
+  }
   LinearLayout panes=new LinearLayout(this);boolean wide=expanded&&getResources().getConfiguration().screenWidthDp>=840;
   panes.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
   panes.addView(card,new LinearLayout.LayoutParams(wide?0:-1,-2,wide?1:0));
@@ -280,7 +298,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
  void selectController(InputDevice device){
   int version=++identityVersion;
   padId=device==null?-1:device.getId();
-  pad.connected=device!=null;pad.reset();pad.setAlpha(device==null?.46f:1f);
+  pad.connected=device!=null;if(device==null)pad.resetView();pad.reset();pad.setAlpha(device==null?.46f:1f);
   pad.ultimate=device!=null&&ControllerIdentity.ultimate2c(device.getVendorId(),device.getProductId());
   boolean[] additional=device==null?null:device.hasKeys(KeyEvent.KEYCODE_BUTTON_1,KeyEvent.KEYCODE_BUTTON_2);
   pad.hasExtra1=additional!=null&&additional.length>0&&additional[0];
@@ -310,7 +328,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
  boolean previewInput(InputEvent event){
   if(pad==null || !hasWindowFocus() || !ControllerIdentity.isPad(event.getDevice()))return false;
   if(event.getDeviceId()!=padId)selectController(event.getDevice());
-  return true;
+  return supportPage.equals("controller");
  }
  @Override public boolean dispatchKeyEvent(KeyEvent e){
   if((e.getAction()==KeyEvent.ACTION_DOWN||e.getAction()==KeyEvent.ACTION_UP)
@@ -346,17 +364,29 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   startSelectedApp();
  }
  void startSelectedApp(){String pkg=Profiles.selected(this);Intent launch=getPackageManager().getLaunchIntentForPackage(pkg);MapperService s=MapperService.current();if(launch==null){Toast.makeText(this,"Uygulama bulunamadı. Başka bir oyun seç.",Toast.LENGTH_LONG).show();return;}if(s==null){explainPermission();return;}if(!s.openSession()){Toast.makeText(this,"Ekranın kilidi açıkken yeniden dene.",Toast.LENGTH_SHORT).show();return;}try{startActivity(launch);}catch(ActivityNotFoundException|SecurityException e){s.endSession("game_unavailable");Toast.makeText(this,"Bu uygulama açılamadı.",Toast.LENGTH_LONG).show();}}
- static final class App {final String pkg,label;final android.graphics.drawable.Drawable icon;App(String pkg,String label,android.graphics.drawable.Drawable icon){this.pkg=pkg;this.label=label;this.icon=icon;}}
  void chooseGame(boolean migration){
-  AlertDialog dialog=new AlertDialog.Builder(ui.dialogContext()).setTitle(migration?"Önceki düzenin oyununu seç":"Uygulama seç").setMessage("Uygulamalar hazırlanıyor…").setNegativeButton("Vazgeç",null).create();dialog.show();ui.finishDialog(dialog);
-  new Thread(()->{PackageManager pm=getPackageManager();Map<String,App> unique=new HashMap<>();Intent intent=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);for(ResolveInfo info:pm.queryIntentActivities(intent,0)){String pkg=info.activityInfo.packageName;if(pkg.equals(getPackageName())||!info.activityInfo.enabled||!info.activityInfo.applicationInfo.enabled)continue;unique.put(pkg,new App(pkg,info.activityInfo.applicationInfo.loadLabel(pm).toString(),info.loadIcon(pm)));}List<App> apps=new ArrayList<>(unique.values());java.text.Collator collator=java.text.Collator.getInstance();Set<String> saved=Profiles.known(this);apps.sort((a,b)->{int order=Boolean.compare(saved.contains(b.pkg),saved.contains(a.pkg));return order!=0?order:collator.compare(a.label,b.label);});runOnUiThread(()->{if(isDestroyed()||isFinishing()||!dialog.isShowing())return;dialog.dismiss();showGames(apps,migration);});},"Vektor-app-picker").start();
+  pickerMigration=migration;pickerOpen=true;switchLayout(1);
  }
- void showGames(List<App> apps,boolean migration){
-  LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(ui.dp(16),0,ui.dp(16),ui.dp(8));EditText search=new EditText(this);search.setSingleLine();search.setHint("Oyun veya uygulama ara");search.setTextColor(ui.text);search.setHintTextColor(ui.muted);search.setTextSize(15);search.setBackground(ui.outline(ui.background,10));search.setPadding(ui.dp(12),0,ui.dp(12),0);content.addView(search,new LinearLayout.LayoutParams(-1,ui.dp(48)));List<App> filtered=new ArrayList<>(apps);GridView list=new GridView(this);list.setNumColumns(getResources().getDisplayMetrics().widthPixels>=ui.dp(720)?3:2);list.setHorizontalSpacing(ui.dp(10));list.setVerticalSpacing(ui.dp(10));list.setPadding(0,ui.dp(12),0,0);
-  BaseAdapter adapter=new BaseAdapter(){public int getCount(){return filtered.size();}public Object getItem(int p){return filtered.get(p);}public long getItemId(int p){return p;}public View getView(int p,View recycled,android.view.ViewGroup parent){App app=filtered.get(p);LinearLayout row=new LinearLayout(MainActivity.this);row.setOrientation(LinearLayout.VERTICAL);row.setGravity(Gravity.CENTER);row.setPadding(ui.dp(12),ui.dp(16),ui.dp(12),ui.dp(16));row.setBackground(ui.outline(app.pkg.equals(Profiles.selected(MainActivity.this))?ui.accentSoft:ui.background,16));ImageView icon=new ImageView(MainActivity.this);icon.setImageDrawable(app.icon);row.addView(icon,new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40)));TextView text=ui.text(app.label,15,false);text.setSingleLine();text.setEllipsize(TextUtils.TruncateAt.END);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=ui.dp(10);text.setGravity(Gravity.CENTER);row.addView(text,lp);TextView detail=ui.caption(Profiles.known(MainActivity.this).contains(app.pkg)?Binding.load(MainActivity.this,app.pkg).size()+" kontrol":"Yeni düzen");detail.setTextSize(12);detail.setGravity(Gravity.CENTER);row.addView(detail);row.setContentDescription(app.label+", "+detail.getText()+(app.pkg.equals(Profiles.selected(MainActivity.this))?", seçili":""));return row;}};list.setAdapter(adapter);FrameLayout results=new FrameLayout(this);results.addView(list,new FrameLayout.LayoutParams(-1,-1));TextView empty=ui.caption("Bu aramayla eşleşen uygulama yok.");empty.setGravity(Gravity.CENTER);empty.setVisibility(View.GONE);results.addView(empty,new FrameLayout.LayoutParams(-1,-1));list.setEmptyView(empty);content.addView(results,new LinearLayout.LayoutParams(-1,Math.max(ui.dp(100),Math.min(ui.dp(360),getResources().getDisplayMetrics().heightPixels-ui.dp(260)))));
-  AlertDialog dialog=new AlertDialog.Builder(ui.dialogContext()).setTitle(migration?"Önceki düzenin oyununu seç":"Uygulama seç").setView(content).setNegativeButton("Vazgeç",null).create();
-  search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int start,int count,int after){}public void onTextChanged(CharSequence s,int start,int before,int count){String q=s.toString().toLowerCase(Locale.ROOT);filtered.clear();for(App a:apps)if(a.label.toLowerCase(Locale.ROOT).contains(q)||a.pkg.toLowerCase(Locale.ROOT).contains(q))filtered.add(a);adapter.notifyDataSetChanged();}public void afterTextChanged(Editable e){}});
-  list.setOnItemClickListener((p,v,index,id)->{App app=filtered.get(index);SessionContinuity.clear();MapperService service=MapperService.current();if(service!=null)service.endSession("game_changed");if(migration&&!Profiles.importLegacy(this,app.pkg)){Toast.makeText(this,"Düzen aktarılamadı; mevcut oyun düzeni değiştirilmedi.",Toast.LENGTH_LONG).show();return;}boolean guided=launchGuideAfterPick;launchGuideAfterPick=false;Profiles.select(this,app.pkg);dialog.dismiss();render();if(guided){GuideState.request(this,app.pkg);launchGame();}});dialog.setOnDismissListener(d->launchGuideAfterPick=false);dialog.show();dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);ui.finishDialog(dialog);
+ void closePicker(){
+  picker=null;pickerOpen=false;launchGuideAfterPick=false;
+  ((android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE))
+   .hideSoftInputFromWindow(body.getWindowToken(),0);
+  switchLayout(-1);
+ }
+ void confirmPicker(List<String> packages){
+  if(packages.isEmpty()||!pickerOpen)return;
+  String first=packages.get(0);
+  SessionContinuity.clear();
+  MapperService service=MapperService.current();
+  if(service!=null)service.endSession("game_changed");
+  if(pickerMigration&&!Profiles.importLegacy(this,first)){
+   Toast.makeText(this,"Düzen aktarılamadı. Mevcut uygulama düzeni korundu.",Toast.LENGTH_LONG).show();
+   return;
+  }
+  for(int i=packages.size()-1;i>=0;i--)Profiles.select(this,packages.get(i));
+  boolean guided=launchGuideAfterPick;
+  closePicker();
+  if(guided){GuideState.request(this,first);launchGame();}
  }
  void switchLayout(int direction){
   View previous=body;
@@ -405,7 +435,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
  void showHelpPage(int page){int next=Math.max(0,Math.min(4,page));int direction=Integer.compare(next,helpPage);helpPage=next;if(!supportPage.equals("guide"))openSupport("guide");else if(direction!=0)switchLayout(direction);}
  void launchGuidedGame(){String game=Profiles.selected(this);if(game.isEmpty()){launchGuideAfterPick=true;chooseGame(false);return;}GuideState.request(this,game);if(MapperService.current()==null)explainPermission();else launchGame();}
  TextView footerLink(String label,Runnable action){TextView t=ui.text(label,12,false);t.setTextColor(ui.muted);t.setGravity(Gravity.CENTER);t.setPadding(ui.dp(12),ui.dp(8),ui.dp(12),ui.dp(8));t.setMinimumHeight(ui.dp(48));t.setMinimumWidth(ui.dp(48));t.setBackground(ui.ripple(ui.shape(android.graphics.Color.TRANSPARENT,10)));t.setContentDescription(label);t.setClickable(true);t.setFocusable(true);t.setOnClickListener(v->action.run());return t;}
- void requestExit(){if(!supportPage.isEmpty()){openSupport("");return;}if(!profilePage.isEmpty()){navigate("");return;}if(isFinishing()||exitDialog!=null&&exitDialog.isShowing())return;MapperService service=MapperService.current();String message=service!=null&&service.sessionActive()?"Vektör'den çıkarsan açık oyun kontrolü oturumu da durur. Atamaların ve makroların kayıtlı kalır.":"Vektör'den çıkmak istiyor musun? Atamaların ve ayarların kayıtlı kalır.";AlertDialog dialog=new AlertDialog.Builder(ui.dialogContext()).setTitle("Uygulamadan çıkılsın mı?").setMessage(message).setNegativeButton("Uygulamada kal",null).setPositiveButton("Çık",(d,w)->closeTask()).create();exitDialog=dialog;dialog.setOnDismissListener(d->{if(exitDialog==dialog)exitDialog=null;});dialog.show();ui.finishDialog(dialog);}
+ void requestExit(){if(pickerOpen){closePicker();return;}if(!supportPage.isEmpty()){openSupport("");return;}if(!profilePage.isEmpty()){navigate("");return;}if(isFinishing()||exitDialog!=null&&exitDialog.isShowing())return;MapperService service=MapperService.current();String message=service!=null&&service.sessionActive()?"Vektör'den çıkarsan açık oyun kontrolü oturumu da durur. Atamaların ve makroların kayıtlı kalır.":"Vektör'den çıkmak istiyor musun? Atamaların ve ayarların kayıtlı kalır.";AlertDialog dialog=new AlertDialog.Builder(ui.dialogContext()).setTitle("Uygulamadan çıkılsın mı?").setMessage(message).setNegativeButton("Uygulamada kal",null).setPositiveButton("Çık",(d,w)->closeTask()).create();exitDialog=dialog;dialog.setOnDismissListener(d->{if(exitDialog==dialog)exitDialog=null;});dialog.show();ui.finishDialog(dialog);}
  void explainPermission(){AlertDialog d=new AlertDialog.Builder(ui.dialogContext()).setTitle("Oyun kontrolü izni").setMessage("Vektör, kol tuşlarını ve çubuk hareketlerini algılamak, açık oyunu ayırt etmek ve seçtiğin ekran noktalarına dokunmak için erişilebilirlik servisini kullanır.\n\nPencere kimliği, türü ve odak bilgisiyle oyuna dönmeni algılar. Pencere listesini almak için Android ekran içeriği erişim yeteneği ister; Vektör ekran metni veya görünüm ağacını istemez, şifreleri ve mesajları okumaz. Veri göndermez. Kontrol yalnızca tanımladığın oyunlarda açık oturum sırasında çalışır.\n\nİzni Android ayarlarından istediğin zaman kaldırabilirsin.").setNegativeButton("Vazgeç",null).setPositiveButton("Kabul et ve devam et",(dialog,w)->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))).create();d.show();ui.finishDialog(d);}
  void closeTask(){SessionContinuity.clear();MapperService s=MapperService.current();if(s!=null)s.endSession("app_closed");finishAndRemoveTask();}
  @Override public void onConfigurationChanged(android.content.res.Configuration config){

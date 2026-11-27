@@ -7,6 +7,9 @@ import android.content.res.ColorStateList;
 import android.view.*;
 import android.widget.*;
 final class Ui {
+ static final int PICKER_ROW=60, PICKER_ICON=40, PICKER_GAP=8, PICKER_LABEL=15, PICKER_SUBTITLE=12;
+ static final int DIALOG_BUTTON_HEIGHT=40, DIALOG_BUTTON_PADDING=16, DIALOG_BUTTON_GAP=8, DIALOG_GUTTER=24;
+ final int padEdge=0x50ffffff, padShadow=0x35000000;
  static final int DIALOG_RADIUS=24, ACTION_WIDTH=124, ACTION_HEIGHT=52, HOME_PAD_HEIGHT=124;
  static final int DISCLOSURE_TITLE=17, DISCLOSURE_ARROW=24, HELP_TITLE=16;
  final Context context;final boolean dark;final int background,surface,text,muted,border,accent,accentSoft,onAccent,danger;
@@ -73,8 +76,16 @@ final class Ui {
    button.setTextColor(primary?onAccent:id==android.app.AlertDialog.BUTTON_NEUTRAL?danger:text);
    button.setTextSize(14);
    button.setMinimumHeight(dp(TOUCH));button.setMinimumWidth(dp(TOUCH));
-   button.setPadding(dp(12),dp(8),dp(12),dp(8));
-   button.setBackground(ripple(primary?shape(accent,16):outline(surface,16)));
+   button.setMinHeight(dp(TOUCH));
+   button.setPadding(dp(DIALOG_BUTTON_PADDING),0,dp(DIALOG_BUTTON_PADDING),0);
+   ViewGroup.LayoutParams params=button.getLayoutParams();
+   params.height=dp(TOUCH);
+   if(params instanceof ViewGroup.MarginLayoutParams)((ViewGroup.MarginLayoutParams)params).setMarginStart(dp(DIALOG_BUTTON_GAP));
+   button.setLayoutParams(params);
+   View panel=(View)button.getParent();
+   panel.setPaddingRelative(dp(DIALOG_GUTTER-DIALOG_BUTTON_GAP),panel.getPaddingTop(),dp(DIALOG_GUTTER),panel.getPaddingBottom());
+   int inset=dp((TOUCH-DIALOG_BUTTON_HEIGHT)/2);
+   button.setBackground(new InsetDrawable(ripple(primary?shape(accent,16):outline(surface,16)),0,inset,0,inset));
    Motion.dialogButton(button);
   }
   Motion.dialog(window.getDecorView());

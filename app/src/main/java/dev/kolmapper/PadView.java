@@ -54,7 +54,7 @@ final class PadView extends View {
  private static float clamp(float value,float min,float max){return Math.max(min,Math.min(max,value));}
  private void cancelReturn(){if(settling!=null){settling.cancel();settling=null;}}
  void resetView(){cancelReturn();tiltX=tiltY=0;zoom=1;invalidate();}
- private boolean canRotate(){return interactive&&connected&&Motion.enabled(getContext());}
+ private boolean canRotate(){return interactive;}
  @Override public boolean onTouchEvent(MotionEvent event){
   if(!canRotate())return false;
   pinch.onTouchEvent(event);
@@ -80,6 +80,7 @@ final class PadView extends View {
  private void returnToCenter(){
   float x=tiltX,y=tiltY;
   if(x==0&&y==0)return;
+  if(!Motion.enabled(getContext())){tiltX=tiltY=0;invalidate();return;}
   settling=android.animation.ValueAnimator.ofFloat(1,0);
   settling.setDuration(Motion.PAD_RETURN);settling.setInterpolator(Motion.RETURN);
   settling.addUpdateListener(value->{float fraction=(Float)value.getAnimatedValue();tiltX=x*fraction;tiltY=y*fraction;invalidate();});
@@ -166,7 +167,8 @@ final class PadView extends View {
    camera.save();camera.rotateX(tiltX);camera.rotateY(tiltY);camera.getMatrix(perspective);camera.restore();
    perspective.preTranslate(-140,-73);perspective.postTranslate(140,73);c.concat(perspective);
   }
-  float parallaxX=depth?tiltY*.12f:0,parallaxY=depth?-tiltX*.12f:0;
+  boolean parallax=depth&&Motion.enabled(getContext());
+  float parallaxX=parallax?tiltY*.12f:0,parallaxY=parallax?-tiltX*.12f:0;
   c.save();c.translate(-parallaxX,-parallaxY);
   shoulder(c,48,6,"L2",KEYCODE_BUTTON_L2,lt);shoulder(c,200,6,"R2",KEYCODE_BUTTON_R2,rt);
   shoulder(c,44,19,"L1",KEYCODE_BUTTON_L1,0);shoulder(c,204,19,"R1",KEYCODE_BUTTON_R1,0);

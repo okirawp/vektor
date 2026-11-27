@@ -154,7 +154,22 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   else{View decor=getWindow().getDecorView();int light=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;int flags=decor.getSystemUiVisibility();decor.setSystemUiVisibility(ui.dark?flags&~light:flags|light);}
  }
  LinearLayout homeGameTile(String pkg){
-  LinearLayout tile=new LinearLayout(this);tile.setGravity(Gravity.CENTER_VERTICAL);tile.setMinimumHeight(ui.dp(72));tile.setPadding(ui.dp(10),ui.dp(8),ui.dp(10),ui.dp(8));tile.setBackground(ui.ripple(ui.outline(ui.surface,Ui.CARD)));tile.setClickable(true);tile.setFocusable(true);String name=Profiles.label(this,pkg);tile.setContentDescription(name+" kontrol düzeni");tile.setOnClickListener(v->navigate(pkg));
+  LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+  LinearLayout tile=new LinearLayout(this){
+   @Override protected void onMeasure(int widthSpec,int heightSpec){
+    Button action=(Button)getChildAt(1);
+    int available=View.MeasureSpec.getSize(widthSpec)-getPaddingLeft()-getPaddingRight();
+    boolean stack=available<ui.dp(Ui.ACTION_LABEL_SPACE)+Math.max(ui.dp(Ui.ACTION_MIN_WIDTH),ui.buttonWidth(action));
+    setOrientation(stack?VERTICAL:HORIZONTAL);
+    LinearLayout.LayoutParams label=(LinearLayout.LayoutParams)row.getLayoutParams();
+    label.width=stack?-1:0;label.weight=stack?0:1;
+    LinearLayout.LayoutParams actionParams=(LinearLayout.LayoutParams)action.getLayoutParams();
+    actionParams.gravity=Gravity.END;actionParams.topMargin=stack?ui.dp(Ui.PICKER_GAP):0;
+    super.onMeasure(widthSpec,heightSpec);
+   }
+  };
+  tile.addView(row,new LinearLayout.LayoutParams(0,-2,1));
+  tile.setGravity(Gravity.CENTER_VERTICAL);tile.setMinimumHeight(ui.dp(72));tile.setPadding(ui.dp(10),ui.dp(8),ui.dp(10),ui.dp(8));tile.setBackground(ui.ripple(ui.outline(ui.surface,Ui.CARD)));tile.setClickable(true);tile.setFocusable(true);String name=Profiles.label(this,pkg);tile.setContentDescription(name+" kontrol düzeni");tile.setOnClickListener(v->navigate(pkg));
 
   android.graphics.drawable.Drawable image=null;
   try{image=getPackageManager().getApplicationIcon(pkg);}catch(PackageManager.NameNotFoundException ignored){}
@@ -163,10 +178,10 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   else{TextView initial=ui.text(name.isEmpty()?"·":name.substring(0,name.offsetByCodePoints(0,1)),18,true);
    initial.setGravity(Gravity.CENTER);initial.setBackground(ui.shape(ui.raised,10));mark=initial;}
   mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-  LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40));ip.rightMargin=ui.dp(12);tile.addView(mark,ip);
-  LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);TextView title=ui.text(name,16,true);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);words.addView(title);int count=Binding.load(this,pkg).size();TextView detail=ui.chip(count==0?"Atama yok":count+" kontrol",count>0);words.addView(detail,new LinearLayout.LayoutParams(-2,-2));tile.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+  LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40));ip.rightMargin=ui.dp(12);row.addView(mark,ip);
+  LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);TextView title=ui.text(name,16,true);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);words.addView(title);int count=Binding.load(this,pkg).size();TextView detail=ui.chip(count==0?"Atama yok":count+" kontrol",count>0);words.addView(detail,new LinearLayout.LayoutParams(-2,-2));row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
   Button open=ui.button(count>0?"Aç":"Kontrol ekle",count>0,()->{if(count==0)GuideState.request(this,pkg);openPackage(pkg);});
-  open.setContentDescription(name+" uygulamasını aç");open.setPadding(0,0,0,0);tile.addView(open,new LinearLayout.LayoutParams(ui.dp(Ui.ACTION_WIDTH),ui.dp(Ui.ACTION_HEIGHT)));return tile;
+  open.setContentDescription(name+" uygulamasını aç");open.setMinimumWidth(ui.dp(Ui.ACTION_MIN_WIDTH));tile.addView(open,new LinearLayout.LayoutParams(-2,-2));return tile;
  }
  void navigate(String pkg){
   boolean back=pkg.isEmpty();
@@ -214,10 +229,20 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   controllerTitle=ui.text("",expanded?24:17,true);if(!expanded){controllerTitle.setMinHeight(ui.dp(Ui.TOUCH));controllerTitle.setGravity(Gravity.CENTER_VERTICAL);}statusLine.addView(controllerTitle);identity.addView(statusLine);
   controllerStatus=ui.caption("");
   heading.addView(identity,new LinearLayout.LayoutParams(0,-2,1));
-  if(!expanded)heading.addView(footerLink("Giriş testi  ›",()->openSupport("controller")));
+  if(!expanded){
+   card.setOnClickListener(view->openSupport("controller"));
+   card.setFocusable(true);
+   card.setContentDescription("Döndürmek için dokun");
+   card.setBackground(ui.ripple(ui.shape(ui.surface,18)));
+   heading.addView(footerLink("Giriş testi  ›",()->openSupport("controller")));
+  }
   card.addView(heading);
   card.addView(controllerStatus);
   pad=new PadView(this,ui,expanded);card.addView(pad,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:Ui.HOME_PAD_HEIGHT)));
+  if(!expanded){
+   TextView hint=ui.caption("Döndürmek için dokun");hint.setGravity(Gravity.CENTER);
+   card.addView(hint);
+  }
   padFeedback=ui.caption("");padFeedback.setGravity(Gravity.CENTER);
   if(expanded){
    card.addView(padFeedback);

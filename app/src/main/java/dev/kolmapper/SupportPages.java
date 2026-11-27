@@ -41,7 +41,7 @@ final class SupportPages {
   section.addView(ui.text(title,16,true));section.addView(ui.caption(subtitle));page.addView(section);
  }
  private void button(String title,boolean primary,Runnable click){
-  LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,ui.dp(48));lp.topMargin=ui.dp(8);
+  LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.topMargin=ui.dp(8);
   page.addView(ui.button(title,primary,click),lp);
  }
  void guide(int step){

@@ -1,0 +1,4 @@
+<resources>
+ <string name="app_name">Vektör</string>
+ <string name="service_description">Oyun kolu tuşlarını algılar ve belirlediğin ekran noktalarına dokunur. Basılı tutma veya tekrar davranışını sen seçersin; bıraktığında kontrol durur. Ekran metnini okumaz; internet erişimi yoktur. Oyun içindeki yuvarlak ikondan düzenlemeyi açıp kontrolü durdurabilirsin.</string>
+</resources>

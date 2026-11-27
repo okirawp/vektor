@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+from pathlib import Path
+source=Path(__file__).with_name('vektor-manual-design-qa.py').read_text().split('\nbaseline=data();',1)[0].replace('vektor11-manual-ui-results.log','vektor11-modal-results.log')
+exec(compile(source,__file__,'exec'))
+baseline=data()
+sh('settings delete secure enabled_accessibility_services\nsettings put secure accessibility_enabled 0')
+wait(lambda:'Bound services:{}' in sh('dumpsys accessibility') and 'Binding services:{}' in sh('dumpsys accessibility'),'QA service cleanly disconnected before final UI update')
+print(call('install','--no-incremental','-r',str(root/'dist/Vektor-1.1.0.apk')).decode().strip(),flush=True)
+check(data()==baseline,'final form refinement update preserves binding/recovery values')
+sh('am start -W -n dev.kolmapper/.MainActivity\nsettings put secure enabled_accessibility_services dev.kolmapper/.MapperService\nsettings put secure accessibility_enabled 1')
+wait(lambda:'PROFILE active=dev.kolmapper.probe' in state(),'final APK accessibility service connects normally')
+tap(370,470);wait(lambda:'foreground=true' in state() and 'armed=true' in state(),'final APK opens saved game in active play')
+tap(44,108);wait(lambda:'editing=true' in state(),'final editor opens')
+tap(650,600);wait(lambda:'settings=true' in state(),'final adaptive form opens');time.sleep(2);shot('settings')
+def pill_y(x):
+ img=Image.open(io.BytesIO(call('exec-out','screencap','-p'))).convert('RGB');rows=[y for y in range(100,680) if img.getpixel((x,y))==(37,47,75)];check(len(rows)>=20,'selected behavior pill is visibly rendered');return (min(rows)+max(rows))//2
+tap(530,pill_y(660));time.sleep(2);check('settings=true' in state(),'compact hold form stays open');shot('settings-hold')
+tap(750,pill_y(450));time.sleep(2);check('settings=true' in state(),'expanded macro form stays open');shot('settings')
+sh('input keyevent KEYCODE_BACK');wait(lambda:'settings=false' in state() and 'editing=true' in state(),'cancel returns to editor without closing it')
+check(data()==baseline,'mode preview and cancel preserves all saved values')
+path=next(x[8:] for x in sh('pm path dev.kolmapper').splitlines() if x.startswith('package:') and x.endswith('/base.apk'))
+call('pull',path,str(root/'dist/vektor11-native-tested.apk'))
+digest=hashlib.sha256((root/'dist/vektor11-native-tested.apk').read_bytes()).hexdigest();check(digest==hashlib.sha256((root/'dist/Vektor-1.1.0.apk').read_bytes()).hexdigest(),'final native tested APK exactly matches delivery APK')
+(root/'dist/vektor11-native-tested-apk-sha.txt').write_text(digest+'  Vektor-1.1.0.apk\n')
+print('ALL FINAL MODAL CHECKS PASSED',flush=True)

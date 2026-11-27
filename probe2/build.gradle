@@ -1,0 +1,6 @@
+plugins { id 'com.android.application' }
+android { namespace 'dev.kolmapper.probe'; compileSdk 36
+ defaultConfig { applicationId 'dev.kolmapper.probe2'; minSdk 26; targetSdk 36; versionCode 1; versionName '1' }
+ sourceSets { main { java.srcDirs = ['../probe/src/main/java'] } }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

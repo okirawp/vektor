@@ -1,0 +1,1 @@
+Koyu açılış ekranı ve varsayılan koyu tema. Tek güneş/ay düğmesi ve kısa geçişler. Yeni kol ve yörünge simgesi. Geri tuşunda çıkış onayı. Adım adım kullanım rehberi ve oyun içi yönlendirme. Sade gizlilik bağlantısı. Mevcut atamalar ve .rota yedekleri korunur.

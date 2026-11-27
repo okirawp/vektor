@@ -1,0 +1,6 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'dev.kolmapper.vpnprobe'; compileSdk 36
+ defaultConfig { applicationId 'dev.kolmapper.vpnprobe'; minSdk 29; targetSdk 36; versionCode 1; versionName 'test' }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

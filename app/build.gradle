@@ -1,0 +1,18 @@
+plugins { id 'com.android.application' }
+def screenshotTests = providers.gradleProperty('ciScreenshots').orNull == 'true'
+android {
+ namespace 'dev.kolmapper'
+ compileSdk 36
+ buildToolsVersion '36.0.0'
+ defaultConfig { applicationId 'dev.kolmapper'; minSdk 29; targetSdk 36; versionCode 18; versionName '1.6.0'; testInstrumentationRunner(screenshotTests ? 'dev.kolmapper.ScreenshotInstrumentation' : 'dev.kolmapper.ProfileInstrumentation') }
+ testOptions { unitTests.includeAndroidResources = true; unitTests.all { systemProperty "robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2" } }
+ testBuildType(screenshotTests ? 'debug' : 'release')
+ buildTypes { debug { applicationIdSuffix '.debug' }; release { debuggable false; minifyEnabled false } }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies {
+ testImplementation "junit:junit:4.13.2"
+ testImplementation "org.robolectric:robolectric:4.14.1"
+ debugImplementation "com.squareup.leakcanary:leakcanary-android:2.14"
+}

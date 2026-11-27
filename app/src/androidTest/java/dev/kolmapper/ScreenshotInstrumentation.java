@@ -68,6 +68,23 @@ public final class ScreenshotInstrumentation extends Instrumentation {
         throw new AssertionError("İşlem bulunamadı: "+description);
     }
 
+    private boolean hasPickerRows(View view) {
+        if(view instanceof android.widget.ListView) return ((android.widget.ListView)view).getCount()>0;
+        if(view instanceof ViewGroup){
+            ViewGroup group=(ViewGroup)view;
+            for(int i=0;i<group.getChildCount();i++)if(hasPickerRows(group.getChildAt(i)))return true;
+        }
+        return false;
+    }
+
+    private void waitForPickerRows() throws Exception {
+        long end=SystemClock.uptimeMillis()+15000;
+        while(!onMain(()->hasPickerRows(activity.body))){
+            if(SystemClock.uptimeMillis()>=end)throw new AssertionError("Uygulama listesi yüklenmedi");
+            SystemClock.sleep(150);
+        }
+    }
+
     private void capture(String file, String expectedText) throws Exception {
         waitForIdleSync();
         long limit = SystemClock.uptimeMillis() + 15000;
@@ -80,6 +97,8 @@ public final class ScreenshotInstrumentation extends Instrumentation {
             SystemClock.sleep(150);
         }
         automation.waitForIdle(300, 5000);
+        // Accessibility can publish a new tree before SurfaceFlinger presents it.
+        SystemClock.sleep(450);
         Bitmap screenshot = automation.takeScreenshot();
         if (screenshot == null) throw new AssertionError("Ekran görüntüsü alınamadı: " + file);
         try (FileOutputStream stream = new FileOutputStream(new File(output, file + ".png"))) {
@@ -139,6 +158,7 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 tap("＋  Yeni uygulama ekle");
                 tap("Tümü");
                 tap("Sistem uygulamalarını göster");
+                waitForPickerRows();
                 capture("07-uygulama-secici","Sistem uygulamalarını göster");
                 tap("‹  Geri");
                 tap("Ayarlar");

@@ -28,7 +28,7 @@ capture(){
 }
 capture 1.0 false
 capture 1.5 true
-for name in 01-ana-ekran 02-kol-onizleme 02b-kol-dondurulmus 03-gizlilik 04-yedekler 05-cikis-diyalogu 06-paylasim-diyalogu 07-uygulama-secici 08-buyuk-yazi-ana-ekran 09-buyuk-yazi-cikis 10-buyuk-yazi-paylasim; do
+for name in 01-ana-ekran 02-kol-onizleme 02b-kol-dondurulmus 03-gizlilik 04-yedekler 05-cikis-diyalogu 06-paylasim-diyalogu 07-uygulama-secici 08-buyuk-yazi-ana-ekran 09-buyuk-yazi-cikis 10-buyuk-yazi-paylasim 11-dolu-koyu 12-dolu-acik 13-giris-testi-acik; do
   adb pull "$remote/$name.png" "ci-output/screenshots/$name.png"
   test -s "ci-output/screenshots/$name.png"
 done

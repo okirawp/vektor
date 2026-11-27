@@ -125,7 +125,9 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 onMain(() -> { activity.onBackPressed(); return null; });
                 capture("09-buyuk-yazi-cikis","Uygulamada kal");
                 onMain(() -> { activity.exitDialog.dismiss(); return null; });
-                tap("Yedek paylaş");
+                tap("Ayarlar");
+                tap("Yedekler");
+                tap("Yedeği paylaş");
                 capture("10-buyuk-yazi-paylasim","Konum seç");
             } else {
                 capture("01-ana-ekran","Uygulamalarım");
@@ -150,8 +152,32 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 onMain(() -> { activity.onBackPressed(); return null; });
                 capture("05-cikis-diyalogu","Uygulamadan çıkılsın mı?");
                 onMain(() -> { activity.exitDialog.dismiss(); return null; });
-                tap("Yedek paylaş");
+                tap("Ayarlar");
+                tap("Yedekler");
+                tap("Yedeği paylaş");
                 capture("06-paylasim-diyalogu","Yedeği paylaş");
+                automation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
+                tap("‹  Geri");
+                tap("‹  Geri");
+                // The dedicated CI emulator has its own app data and launchable system packages.
+                onMain(() -> {
+                    android.content.Intent launcher=new android.content.Intent(android.content.Intent.ACTION_MAIN)
+                        .addCategory(android.content.Intent.CATEGORY_LAUNCHER);
+                    int added=0;
+                    for(android.content.pm.ResolveInfo app:activity.getPackageManager().queryIntentActivities(launcher,0)){
+                        String pkg=app.activityInfo.packageName;
+                        if(pkg.equals(activity.getPackageName())||Profiles.known(activity).contains(pkg))continue;
+                        Profiles.select(activity,pkg);
+                        if(++added==3)break;
+                    }
+                    activity.render();return null;
+                });
+                capture("11-dolu-koyu","Atama yok");
+                tap("Açık temaya geç");
+                capture("12-dolu-acik","Atama yok");
+                tap("Döndürmek için dokun");
+                capture("13-giris-testi-acik","Giriş geçmişi");
+                onMain(()->{activity.theme(true);return null;});
             }
             result.putString("stream", "SCREENSHOTS_OK");
             finish(Activity.RESULT_OK, result);

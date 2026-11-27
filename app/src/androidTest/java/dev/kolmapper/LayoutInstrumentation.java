@@ -31,7 +31,7 @@ public class LayoutInstrumentation extends Instrumentation {
   do{runOnMainSync(()->focused[0]=activity.getWindow().getDecorView().hasWindowFocus());if(focused[0])break;SystemClock.sleep(100);}while(SystemClock.uptimeMillis()<focusDeadline);
   if(!focused[0])throw new AssertionError("QA main screen is obscured by another window");
   if("true".equals(arguments.getString("profile_switch"))){verifyProfileShortcuts();waitForIdleSync();}
-  runOnMainSync(()->inspect(activity.getWindow().getDecorView()));if(failure!=null)throw new AssertionError(failure);if(clicks<6)throw new AssertionError("Main controls are not visible (locked or obscured screen)");if(icons!=3||findAction(activity.body,"Ayarlar")==null||findAction(activity.body,"Yedek paylaş")==null)throw new AssertionError("Home toolbar actions missing");
+  runOnMainSync(()->inspect(activity.getWindow().getDecorView()));if(failure!=null)throw new AssertionError(failure);if(clicks<6)throw new AssertionError("Main controls are not visible (locked or obscured screen)");if(icons!=2||findAction(activity.body,"Ayarlar")==null)throw new AssertionError("Home toolbar actions missing");
   String screen=arguments.getString("screen","main");
   if("picker".equals(screen))runOnMainSync(()->activity.chooseGame(false));
   if("editor".equals(screen)||"settings".equals(screen)){

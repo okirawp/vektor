@@ -46,6 +46,14 @@ public class ControllerExperienceTest {
   File dir=new File("build/preview");dir.mkdirs();
   try(FileOutputStream f=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,f);}b.recycle();
  }
+ private boolean hasText(View view,String wanted){
+  if(view instanceof android.widget.TextView&&wanted.contentEquals(((android.widget.TextView)view).getText()))return true;
+  if(view instanceof ViewGroup){
+   ViewGroup group=(ViewGroup)view;
+   for(int i=0;i<group.getChildCount();i++)if(hasText(group.getChildAt(i),wanted))return true;
+  }
+  return false;
+ }
  @Test public void simultaneousInputsMotionAndDisconnect()throws Exception{
   Devices.pad=fixture();
   try(ActivityController<MainActivity> c=Robolectric.buildActivity(MainActivity.class).setup().visible()){
@@ -63,13 +71,13 @@ public class ControllerExperienceTest {
    MotionEvent e=MotionEvent.obtain(1,2,MotionEvent.ACTION_MOVE,1,new MotionEvent.PointerProperties[]{pointer},new MotionEvent.PointerCoords[]{coords},0,0,1,1,7,0,InputDevice.SOURCE_JOYSTICK,0);
    Shadows.shadowOf(e).setDevice(Devices.pad);
    try{assertTrue(a.dispatchGenericMotionEvent(e));assertEquals(-.75f,a.pad.lx,.01f);assertEquals(.86f,a.pad.rt,.01f);}finally{e.recycle();}
-   a.refreshDiagnostics();assertTrue(a.readings.getText().toString().contains("%86"));
-   assertTrue(a.history.getText().toString().contains("Bırakıldı"));
+   a.refreshDiagnostics();assertTrue(hasText(a.diagnostics,"R2  %86"));
+   assertTrue(hasText(a.diagnostics,"↑ Bırakıldı"));
    capture(a,"controller-test");
    for(int i=0;i<12;i++) a.dispatchKeyEvent(key(i%2,KeyEvent.KEYCODE_BUTTON_A));
-   assertEquals(8,a.inputLog.size());
+   assertEquals(6,a.inputLog.size());
    java.util.Map<String,Object> snapshot=Backups.snapshot(a);
-   a.inputLog.clear();a.refreshDiagnostics();assertEquals("Henüz tuş olayı yok",a.history.getText());
+   a.inputLog.clear();a.diagnostics.updateHistory();assertTrue(hasText(a.diagnostics,"Henüz tuş olayı yok"));
    assertEquals(snapshot,Backups.snapshot(a));
    Devices.pad=null;a.onInputDeviceRemoved(7);assertEquals("Kol bağlı değil",a.controllerTitle.getText());assertFalse(a.pad.keys.get(KeyEvent.KEYCODE_BUTTON_X));assertEquals(0,a.pad.rt,0);
   }finally{Devices.pad=null;}

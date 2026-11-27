@@ -11,6 +11,11 @@ import static android.view.MotionEvent.*;
 final class PadView extends View {
  interface Renderer {
   void draw(Canvas canvas,PadView state);
+  default void setVisible(boolean visible){}
+  default void release(){}
+ }
+ interface ModelFactory {
+  Renderer create(Context context,String asset);
  }
  private final Renderer renderer;
  private final boolean interactive;
@@ -33,8 +38,26 @@ final class PadView extends View {
  boolean connected;
  boolean ultimate,hasExtra1,hasExtra2;
  PadView(Context c,Ui ui,boolean interactive){
-  this(c,ui,interactive,(canvas,state)->state.drawLayers(canvas));
+  this(c,ui,interactive,rendererFor(c));
  }
+ private static Renderer rendererFor(Context context){
+  try{
+   String[] assets=context.getAssets().list("");
+   if(assets!=null)for(String model:assets){
+    if(!model.endsWith(".glb"))continue;
+    for(ModelFactory factory:java.util.ServiceLoader.load(ModelFactory.class)){
+     Renderer renderer=factory.create(context,model);
+     if(renderer!=null)return renderer;
+    }
+   }
+  }catch(java.io.IOException|java.util.ServiceConfigurationError|RuntimeException e){
+   android.util.Log.w("VektorPreview","Model önizlemesi yüklenemedi",e);
+  }
+  return (canvas,state)->state.drawLayers(canvas);
+ }
+ float pitch(){return tiltX;}
+ float yaw(){return tiltY;}
+ float zoom(){return zoom;}
  // A GLB renderer can be supplied here without changing the input preview or mapper.
  PadView(Context c,Ui ui,boolean interactive,Renderer renderer){
   super(c);this.ui=ui;glow=ui.accent;this.interactive=interactive;this.renderer=renderer;
@@ -98,12 +121,15 @@ final class PadView extends View {
  @Override protected void onVisibilityChanged(View changedView,int visibility){
   super.onVisibilityChanged(changedView,visibility);
   if(visibility!=VISIBLE)resetView();
+  if(renderer!=null)renderer.setVisible(isShown()&&getWindowVisibility()==VISIBLE);
  }
  @Override protected void onWindowVisibilityChanged(int visibility){
   super.onWindowVisibilityChanged(visibility);
   if(visibility!=VISIBLE)resetView();
+  if(renderer!=null)renderer.setVisible(isShown()&&getWindowVisibility()==VISIBLE);
  }
- @Override protected void onDetachedFromWindow(){resetView();super.onDetachedFromWindow();}
+ @Override protected void onAttachedToWindow(){super.onAttachedToWindow();renderer.setVisible(isShown());}
+ @Override protected void onDetachedFromWindow(){resetView();renderer.release();super.onDetachedFromWindow();}
  void reset(){keys.clear();lx=ly=rx=ry=hx=hy=lt=rt=0;invalidate();}
  void layoutFor(String deviceName){
   String name=deviceName.toLowerCase(java.util.Locale.ROOT);

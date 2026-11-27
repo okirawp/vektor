@@ -16,16 +16,15 @@ public class ExperienceTest {
   return null;
  }
  int icons(View view){int n=view instanceof ActionIcon?1:0;if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)n+=icons(group.getChildAt(i));}return n;}
- @Test public void freshInstallUsesDarkAndSingleSunAction(){assertTrue(new Ui(context).dark);try(ActivityController<MainActivity> controller=open()){MainActivity activity=controller.get();assertNotNull(action(activity.body,"Açık temaya geç"));assertNull(action(activity.body,"Koyu temaya geç"));assertEquals(3,icons(activity.body));
+ @Test public void freshInstallUsesDarkAndSingleSunAction(){assertTrue(new Ui(context).dark);try(ActivityController<MainActivity> controller=open()){MainActivity activity=controller.get();assertNotNull(action(activity.body,"Açık temaya geç"));assertNull(action(activity.body,"Koyu temaya geç"));assertEquals(2,icons(activity.body));
   assertNull(action(activity.body,"Gizlilik"));
-  assertNotNull(action(activity.body,"Yedek paylaş"));
+  assertNull(action(activity.body,"Yedek paylaş"));
   action(activity.body,"Ayarlar").performClick();
   assertNotNull(action(activity.body,"Nasıl kullanılır"));
   action(activity.body,"Gizlilik").performClick();
   assertEquals("privacy",activity.supportPage);
   activity.onBackPressed();assertEquals("settings",activity.supportPage);
-  Switch motion=(Switch)findText(activity.body,"Hareketi azalt");motion.setChecked(true);
-  assertFalse(Motion.enabled(activity));
+  assertNull(findText(activity.body,"Hareketi azalt"));
   activity.onBackPressed();assertTrue(activity.supportPage.isEmpty());}}
  @Test public void themeToggleIsReversibleWithoutChangingMappings(){Profiles.select(context,"test.game.a");Binding.save(context,"test.game.a",Collections.singletonList(new Binding(96,300,400,1280,800,50,0)));String before=Profiles.prefs(context).getString("game.test.game.a.bindings","");try(ActivityController<MainActivity> controller=open()){MainActivity activity=controller.get();action(activity.body,"Açık temaya geç").performClick();assertFalse(new Ui(context).dark);assertNotNull(action(activity.body,"Koyu temaya geç"));action(activity.body,"Koyu temaya geç").performClick();assertTrue(new Ui(context).dark);assertEquals(before,Profiles.prefs(context).getString("game.test.game.a.bindings",""));}}
  @Test public void backRequiresConfirmationAndCancelKeepsActivity(){try(ActivityController<MainActivity> controller=open()){MainActivity activity=controller.get();activity.onBackPressed();AlertDialog dialog=ShadowAlertDialog.getLatestAlertDialog();assertTrue(dialog.isShowing());assertFalse(activity.isFinishing());dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();assertFalse(activity.isFinishing());assertFalse(dialog.isShowing());activity.onBackPressed();assertTrue(ShadowAlertDialog.getLatestAlertDialog().isShowing());}}

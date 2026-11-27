@@ -7,6 +7,8 @@ import android.content.res.ColorStateList;
 import android.view.*;
 import android.widget.*;
 final class Ui {
+ static final int SECTION_GAP=24, PICKER_SECTION_GAP=12, TAB_GAP=8, LIBRARY_ROW=64;
+ static final int AXIS_SIZE=104, AXIS_PLOT=44, TRIGGER_BAR=4;
  static final int PICKER_ROW=60, PICKER_ICON=40, PICKER_GAP=8, PICKER_LABEL=15, PICKER_SUBTITLE=12;
  static final int DIALOG_BUTTON_HEIGHT=40, BUTTON_HORIZONTAL_PADDING=20, DIALOG_BUTTON_GAP=8, DIALOG_GUTTER=24;
  final int padEdge=0x50ffffff, padShadow=0x35000000;
@@ -46,6 +48,19 @@ final class Ui {
   };b.setText(title);b.setAllCaps(false);b.setTextSize(14);b.setTextColor(primary?onAccent:text);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
   b.setBackground(ripple(primary?shape(accent,14):outline(surface,14)));b.setMinHeight(dp(48));b.setMinimumHeight(dp(TOUCH));b.setMinimumWidth(dp(TOUCH));b.setSingleLine(false);b.setEllipsize(null);b.setPadding(dp(BUTTON_HORIZONTAL_PADDING),dp(8),dp(BUTTON_HORIZONTAL_PADDING),dp(8));b.setStateListAnimator(null);
   b.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);action.run();});return b;
+ }
+ Button textButton(String title,Runnable action){
+  Button button=button(title,false,action);
+  button.setTextColor(accentText);button.setBackground(ripple(shape(Color.TRANSPARENT,CARD)));
+  return button;
+ }
+ void pickerTab(RadioButton tab){
+  styleMode(tab);
+  tab.setPadding(dp(TAB_GAP),dp(TAB_GAP),dp(TAB_GAP),dp(TAB_GAP));
+  StateListDrawable states=new StateListDrawable();
+  states.addState(new int[]{android.R.attr.state_checked},shape(accentSoft,TOUCH/2));
+  states.addState(new int[]{},shape(surface,TOUCH/2));
+  tab.setBackground(ripple(states));
  }
  void styleMode(RadioButton b){
   b.setButtonDrawable((Drawable)null);b.setGravity(Gravity.CENTER);b.setMinHeight(dp(48));b.setMinimumHeight(dp(TOUCH));b.setMinimumWidth(dp(TOUCH));b.setSingleLine(false);b.setEllipsize(null);b.setTextSize(14);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));b.setPadding(dp(BUTTON_HORIZONTAL_PADDING),dp(10),dp(BUTTON_HORIZONTAL_PADDING),dp(10));

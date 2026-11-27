@@ -57,11 +57,16 @@ final class AppPicker {
   String[] labels={"Önerilen","Oyunlar","Tümü"};
   for(int i=0;i<labels.length;i++){
    RadioButton tab=new RadioButton(host);tab.setId(View.generateViewId());tab.setText(labels[i]);
-   ui.styleMode(tab);tabs.addView(tab,new RadioGroup.LayoutParams(0,-2,1));
+   ui.pickerTab(tab);
+   RadioGroup.LayoutParams tabSize=new RadioGroup.LayoutParams(0,-2,1);
+   if(i>0)tabSize.setMarginStart(ui.dp(Ui.TAB_GAP));tabs.addView(tab,tabSize);
   }
-  root.addView(tabs);tabs.check(tabs.getChildAt(RECOMMENDED).getId());
+  LinearLayout.LayoutParams tabsSize=new LinearLayout.LayoutParams(-1,-2);tabsSize.topMargin=ui.dp(Ui.PICKER_SECTION_GAP);
+  root.addView(tabs,tabsSize);tabs.check(tabs.getChildAt(RECOMMENDED).getId());
   system=new Switch(host);system.setText("Sistem uygulamalarını göster");system.setTextColor(ui.muted);
-  system.setMinHeight(ui.dp(Ui.TOUCH));root.addView(system);
+  system.setMinHeight(ui.dp(Ui.TOUCH));
+  LinearLayout.LayoutParams systemSize=new LinearLayout.LayoutParams(-1,-2);
+  systemSize.topMargin=ui.dp(Ui.PICKER_SECTION_GAP);root.addView(system,systemSize);
 
   FrameLayout resultsArea=new FrameLayout(host);root.addView(resultsArea,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout resultRow=new LinearLayout(host);
@@ -190,7 +195,7 @@ final class AppPicker {
  }
  private final class Row extends LinearLayout {
   final ImageView icon=new ImageView(host);
-  final TextView name=ui.text("",Ui.PICKER_LABEL,true),pkg=ui.caption(""),badge=ui.chip("",false);
+  final TextView name=ui.text("",Ui.PICKER_LABEL,true),pkg=ui.caption(""),badge=ui.caption("");
   final CheckBox check=new CheckBox(host);
   Row(){
    super(host);setGravity(Gravity.CENTER_VERTICAL);setMinimumHeight(ui.dp(Ui.PICKER_ROW));

@@ -66,10 +66,6 @@ final class SupportPages {
  }
  void settings(){
   page.addView(ui.text("Ayarlar",28,true));
-  Switch motion=new Switch(host);motion.setText("Hareketi azalt");motion.setTextColor(ui.text);motion.setMinHeight(ui.dp(48));
-  motion.setChecked(host.getSharedPreferences("appearance",0).getBoolean("reduced",false));
-  motion.setOnCheckedChangeListener((v,on)->host.getSharedPreferences("appearance",0).edit().putBoolean("reduced",on).apply());
-  page.addView(motion);
   for(String title:new String[]{"Nasıl kullanılır","Gizlilik","Yedekler"}){
    int kind=title.equals("Gizlilik")?ActionIcon.PRIVACY:title.equals("Yedekler")?ActionIcon.BACKUP:ActionIcon.HELP;
    LinearLayout tile=ui.actionTile(title,kind,()->{if(kind==ActionIcon.HELP)host.showHelp();else if(kind==ActionIcon.PRIVACY)host.showPrivacy();else host.showBackups();});
@@ -116,6 +112,7 @@ final class SupportPages {
   page.addView(host.backupProgress);host.updateBackupProgress();
   entry("Dışa aktar","Bir .rota dosyası oluştur ve saklayacağın konumu seç. Dosya şifreli değildir.");
   button("Dosyayı kaydet",true,host::exportBackup);
+  page.addView(ui.textButton("Yedeği paylaş",host::shareBackup));
   entry("İçe aktar","Bir .rota dosyası seç. Yüklenecek düzenleri onaylamadan önce Vektör dosyanın bütünlüğünü denetler.");
   button("Yedek seç",false,host::importBackup);
   if(new File(host.getFilesDir(),"before-restore.rota").exists())button("Önceki düzeni kurtar",false,()->host.readBackup(null));

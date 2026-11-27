@@ -68,6 +68,23 @@ public final class ScreenshotInstrumentation extends Instrumentation {
         throw new AssertionError("İşlem bulunamadı: "+description);
     }
 
+    private boolean hasPickerRows(View view) {
+        if(view instanceof android.widget.ListView) return ((android.widget.ListView)view).getCount()>0;
+        if(view instanceof ViewGroup){
+            ViewGroup group=(ViewGroup)view;
+            for(int i=0;i<group.getChildCount();i++)if(hasPickerRows(group.getChildAt(i)))return true;
+        }
+        return false;
+    }
+
+    private void waitForPickerRows() throws Exception {
+        long end=SystemClock.uptimeMillis()+15000;
+        while(!onMain(()->hasPickerRows(activity.body))){
+            if(SystemClock.uptimeMillis()>=end)throw new AssertionError("Uygulama listesi yüklenmedi");
+            SystemClock.sleep(150);
+        }
+    }
+
     private void capture(String file, String expectedText) throws Exception {
         waitForIdleSync();
         long limit = SystemClock.uptimeMillis() + 15000;
@@ -80,6 +97,8 @@ public final class ScreenshotInstrumentation extends Instrumentation {
             SystemClock.sleep(150);
         }
         automation.waitForIdle(300, 5000);
+        // Accessibility can publish a new tree before SurfaceFlinger presents it.
+        SystemClock.sleep(450);
         Bitmap screenshot = automation.takeScreenshot();
         if (screenshot == null) throw new AssertionError("Ekran görüntüsü alınamadı: " + file);
         try (FileOutputStream stream = new FileOutputStream(new File(output, file + ".png"))) {
@@ -125,7 +144,9 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 onMain(() -> { activity.onBackPressed(); return null; });
                 capture("09-buyuk-yazi-cikis","Uygulamada kal");
                 onMain(() -> { activity.exitDialog.dismiss(); return null; });
-                tap("Yedek paylaş");
+                tap("Ayarlar");
+                tap("Yedekler");
+                tap("Yedeği paylaş");
                 capture("10-buyuk-yazi-paylasim","Konum seç");
             } else {
                 capture("01-ana-ekran","Uygulamalarım");
@@ -137,6 +158,7 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 tap("＋  Yeni uygulama ekle");
                 tap("Tümü");
                 tap("Sistem uygulamalarını göster");
+                waitForPickerRows();
                 capture("07-uygulama-secici","Sistem uygulamalarını göster");
                 tap("‹  Geri");
                 tap("Ayarlar");
@@ -150,8 +172,32 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 onMain(() -> { activity.onBackPressed(); return null; });
                 capture("05-cikis-diyalogu","Uygulamadan çıkılsın mı?");
                 onMain(() -> { activity.exitDialog.dismiss(); return null; });
-                tap("Yedek paylaş");
+                tap("Ayarlar");
+                tap("Yedekler");
+                tap("Yedeği paylaş");
                 capture("06-paylasim-diyalogu","Yedeği paylaş");
+                automation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
+                tap("‹  Geri");
+                tap("‹  Geri");
+                // The dedicated CI emulator has its own app data and launchable system packages.
+                onMain(() -> {
+                    android.content.Intent launcher=new android.content.Intent(android.content.Intent.ACTION_MAIN)
+                        .addCategory(android.content.Intent.CATEGORY_LAUNCHER);
+                    int added=0;
+                    for(android.content.pm.ResolveInfo app:activity.getPackageManager().queryIntentActivities(launcher,0)){
+                        String pkg=app.activityInfo.packageName;
+                        if(pkg.equals(activity.getPackageName())||Profiles.known(activity).contains(pkg))continue;
+                        Profiles.select(activity,pkg);
+                        if(++added==3)break;
+                    }
+                    activity.render();return null;
+                });
+                capture("11-dolu-koyu","Atama yok");
+                tap("Açık temaya geç");
+                capture("12-dolu-acik","Atama yok");
+                tap("Döndürmek için dokun");
+                capture("13-giris-testi-acik","Giriş geçmişi");
+                onMain(()->{activity.theme(true);return null;});
             }
             result.putString("stream", "SCREENSHOTS_OK");
             finish(Activity.RESULT_OK, result);

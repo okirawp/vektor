@@ -82,20 +82,27 @@ final class SupportPages {
   LinearLayout toggle=ui.actionTile(title, title.equals("Dosya ve depolama")?ActionIcon.BACKUP:
    title.equals("Ağ erişimi")?ActionIcon.NETWORK:ActionIcon.PAD,()->{});
   toggle.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);toggle.setMinimumHeight(ui.dp(48));toggle.setBackground(ui.ripple(ui.shape(ui.surface,10)));
-  TextView state=ui.text("＋",18,false);state.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);toggle.addView(state,new LinearLayout.LayoutParams(0,-2,1));
+  TextView heading=(TextView)toggle.getChildAt(1);
+  heading.setTextSize(Ui.DISCLOSURE_TITLE);
+  heading.setSingleLine(false);
+  heading.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));
+  ActionIcon arrow=new ActionIcon(host,ui,ActionIcon.CHEVRON,false,"",()->{});
+  arrow.setClickable(false);arrow.setFocusable(false);arrow.setBackground(null);
+  arrow.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+  toggle.addView(arrow,new LinearLayout.LayoutParams(ui.dp(Ui.DISCLOSURE_ARROW),ui.dp(Ui.DISCLOSURE_ARROW)));
   card.addView(toggle);card.addView(ui.caption(summary));TextView more=ui.caption(details);
   more.setVisibility(android.view.View.GONE);card.addView(more);
   toggle.setContentDescription(title+", ayrıntıları göster");
   toggle.setOnClickListener(v->{boolean open=more.getVisibility()!=android.view.View.VISIBLE;
    if(Motion.enabled(host))android.transition.TransitionManager.beginDelayedTransition(card,new android.transition.AutoTransition().setDuration(Motion.COMPONENT));
-   more.setVisibility(open?android.view.View.VISIBLE:android.view.View.GONE);state.setText(open?"−":"＋");toggle.setContentDescription(title+(open?", ayrıntıları gizle":", ayrıntıları göster"));});
+   more.setVisibility(open?android.view.View.VISIBLE:android.view.View.GONE);Motion.disclosure(arrow,open);toggle.setContentDescription(title+(open?", ayrıntıları gizle":", ayrıntıları göster"));});
  }
  void privacy(){
   cover("Gizlilik",StoryArt.PRIVACY,"Atamalar, makrolar ve tercihler bu cihazda saklanır.");
   disclosure("Kol ve ekran","Seçtiğin uygulamaya dokunma gönderir.","Erişilebilirlik izni, seçili uygulamada kol girişini dokunuşa çevirir. Vektör pencerenin kimliğini, türünü ve odağını kullanır. Ekran görüntüsü almaz; mesaj, şifre veya ekran metni okumaz.");
   disclosure("Ağ erişimi","Ağ izni istenmez.","Vektör’ün internet izni yoktur. Hesap, reklam veya analiz servisi kullanmaz.");
   disclosure("Dosya ve depolama","Dışa aktarılan dosyanın konumunu sen seçersin.",".rota yedeği şifreli değildir. Bulut konumu seçersen dosyayı oraya seçtiğin sağlayıcı aktarır.");
-  LinearLayout permissions=ui.actionTile("Android izin ayarları",ActionIcon.SETTINGS,()->host.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+  LinearLayout permissions=ui.actionTile("Android izin ayarları",ActionIcon.PRIVACY,()->host.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,ui.dp(48));lp.topMargin=ui.dp(12);page.addView(permissions,lp);
  }
  void backups(){

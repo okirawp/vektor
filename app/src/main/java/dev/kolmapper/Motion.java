@@ -18,6 +18,25 @@ final class Motion {
   float scale=down?.96f:1f;
   view.animate().scaleX(scale).scaleY(scale).setDuration(down?PRESS:RELEASE).setInterpolator(down?EASE:RETURN).start();
  }
+ static void dialog(View view){
+  if(!enabled(view.getContext()))return;
+  view.setAlpha(0);view.setScaleX(.96f);view.setScaleY(.96f);
+  view.animate().alpha(1).scaleX(1).scaleY(1).setDuration(COMPONENT).setInterpolator(EASE).start();
+ }
+ static void dialogButton(View button){
+  button.setOnTouchListener((view,event)->{
+   int action=event.getActionMasked();
+   if(action==MotionEvent.ACTION_DOWN)press(view,true);
+   if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)press(view,false);
+   return false;
+  });
+ }
+ static void disclosure(View arrow,boolean open){
+  float rotation=open?180f:0f;
+  arrow.animate().cancel();
+  if(enabled(arrow.getContext()))arrow.animate().rotation(rotation).setDuration(COMPONENT).setInterpolator(EASE).start();
+  else arrow.setRotation(rotation);
+ }
  static void enter(View view){enter(view,0);}
  static void enter(View view,int delay){
   if(!enabled(view.getContext()))return;

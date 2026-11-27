@@ -6,7 +6,7 @@ import android.graphics.*;
 import android.view.*;
 /** Small native icons: no emoji font differences or idle animations. */
 final class ActionIcon extends View {
- static final int SUN=0,MOON=1,PRIVACY=2,HELP=3,BACKUP=4,SETTINGS=5,SHARE=6,NETWORK=7,PAD=8,TARGET=9,ADD=10;
+ static final int SUN=0,MOON=1,PRIVACY=2,HELP=3,BACKUP=4,SETTINGS=5,SHARE=6,NETWORK=7,PAD=8,TARGET=9,ADD=10,CHEVRON=11;
  final Path glyph=new Path();
  final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);final Ui ui;final int kind;final boolean selected;
  ActionIcon(Context c,Ui ui,int kind,boolean selected,String description,Runnable action){
@@ -32,6 +32,7 @@ final class ActionIcon extends View {
   else if(kind==PAD){c.drawRoundRect(2,6,22,19,5,5,p);c.drawLine(5,12,11,12,p);c.drawLine(8,9,8,15,p);c.drawCircle(17,11,1,p);}
   else if(kind==TARGET){c.drawCircle(12,12,8,p);c.drawCircle(12,12,3,p);}
   else if(kind==ADD){c.drawLine(4,12,20,12,p);c.drawLine(12,4,12,20,p);}
+  else if(kind==CHEVRON){c.drawLine(6,9,12,15,p);c.drawLine(12,15,18,9,p);}
   else if(kind==SETTINGS){
    c.drawLine(3,7,10,7,p);c.drawLine(16,7,21,7,p);c.drawCircle(13,7,3,p);
    c.drawLine(3,17,6,17,p);c.drawLine(12,17,21,17,p);c.drawCircle(9,17,3,p);

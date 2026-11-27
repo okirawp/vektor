@@ -8,9 +8,9 @@ import android.view.*;
 import android.widget.*;
 final class Ui {
  static final int PICKER_ROW=60, PICKER_ICON=40, PICKER_GAP=8, PICKER_LABEL=15, PICKER_SUBTITLE=12;
- static final int DIALOG_BUTTON_HEIGHT=40, DIALOG_BUTTON_PADDING=16, DIALOG_BUTTON_GAP=8, DIALOG_GUTTER=24;
+ static final int DIALOG_BUTTON_HEIGHT=40, BUTTON_HORIZONTAL_PADDING=20, DIALOG_BUTTON_GAP=8, DIALOG_GUTTER=24;
  final int padEdge=0x50ffffff, padShadow=0x35000000;
- static final int DIALOG_RADIUS=24, ACTION_WIDTH=124, ACTION_HEIGHT=52, HOME_PAD_HEIGHT=124;
+ static final int DIALOG_RADIUS=24, ACTION_MIN_WIDTH=124, ACTION_LABEL_SPACE=120, HOME_PAD_HEIGHT=124;
  static final int DISCLOSURE_TITLE=17, DISCLOSURE_ARROW=24, HELP_TITLE=16;
  final Context context;final boolean dark;final int background,surface,text,muted,border,accent,accentSoft,onAccent,danger;
  static final int TOUCH=48,ORB=52,CARD=16,PANEL=20,ICON=24;
@@ -44,18 +44,18 @@ final class Ui {
   Button b=new Button(context){
    @Override public void setPressed(boolean pressed){if(pressed!=isPressed())Motion.press(this,pressed);super.setPressed(pressed);}
   };b.setText(title);b.setAllCaps(false);b.setTextSize(14);b.setTextColor(primary?onAccent:text);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
-  b.setBackground(ripple(primary?shape(accent,14):outline(surface,14)));b.setMinHeight(dp(48));b.setMinimumHeight(dp(TOUCH));b.setMinimumWidth(dp(TOUCH));b.setPadding(dp(16),dp(8),dp(16),dp(8));b.setStateListAnimator(null);
+  b.setBackground(ripple(primary?shape(accent,14):outline(surface,14)));b.setMinHeight(dp(48));b.setMinimumHeight(dp(TOUCH));b.setMinimumWidth(dp(TOUCH));b.setSingleLine(false);b.setEllipsize(null);b.setPadding(dp(BUTTON_HORIZONTAL_PADDING),dp(8),dp(BUTTON_HORIZONTAL_PADDING),dp(8));b.setStateListAnimator(null);
   b.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);action.run();});return b;
  }
  void styleMode(RadioButton b){
-  b.setButtonDrawable((Drawable)null);b.setGravity(Gravity.CENTER);b.setMinHeight(dp(48));b.setMinimumHeight(dp(TOUCH));b.setMinimumWidth(dp(TOUCH));b.setSingleLine();b.setEllipsize(android.text.TextUtils.TruncateAt.END);b.setTextSize(14);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));b.setPadding(dp(10),dp(10),dp(10),dp(10));
+  b.setButtonDrawable((Drawable)null);b.setGravity(Gravity.CENTER);b.setMinHeight(dp(48));b.setMinimumHeight(dp(TOUCH));b.setMinimumWidth(dp(TOUCH));b.setSingleLine(false);b.setEllipsize(null);b.setTextSize(14);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));b.setPadding(dp(BUTTON_HORIZONTAL_PADDING),dp(10),dp(BUTTON_HORIZONTAL_PADDING),dp(10));
   StateListDrawable states=new StateListDrawable();GradientDrawable checked=shape(accentSoft,11);checked.setStroke(dp(1),accent);states.addState(new int[]{android.R.attr.state_checked},checked);states.addState(new int[]{},outline(background,11));b.setBackground(ripple(states));
   b.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_checked},{}},new int[]{accentText,muted}));
  }
  LinearLayout actionTile(String label,int kind,Runnable action){
   LinearLayout tile=new LinearLayout(context);tile.setGravity(Gravity.CENTER);tile.setPadding(dp(6),dp(6),dp(6),dp(6));tile.setBackground(ripple(outline(surface,13)));tile.setClickable(true);tile.setFocusable(true);tile.setContentDescription(label);tile.setOnClickListener(v->action.run());
   ActionIcon icon=new ActionIcon(context,this,kind,false,label,action);icon.setClickable(false);icon.setFocusable(false);icon.setBackground(null);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);tile.addView(icon,new LinearLayout.LayoutParams(dp(22),dp(22)));
-  TextView name=text(label,12,true);name.setSingleLine();name.setEllipsize(android.text.TextUtils.TruncateAt.END);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.leftMargin=dp(5);tile.addView(name,lp);return tile;
+  TextView name=text(label,12,true);name.setSingleLine(false);name.setEllipsize(null);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.leftMargin=dp(5);tile.addView(name,lp);return tile;
  }
  void addButton(LinearLayout parent,String title,boolean primary,Runnable action){Button b=button(title,primary,action);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(12);parent.addView(b,lp);}
  LinearLayout card(LinearLayout parent){LinearLayout c=new LinearLayout(context);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(20),dp(20),dp(20),dp(20));c.setBackground(outline(surface,22));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(20);parent.addView(c,lp);return c;}
@@ -68,6 +68,7 @@ final class Ui {
   window.setLayout(Math.min(dp(560),context.getResources().getDisplayMetrics().widthPixels-dp(32)),-2);
   TextView message=dialog.findViewById(android.R.id.message);
   if(message!=null)message.setTextColor(muted);
+  java.util.ArrayList<Button> buttons=new java.util.ArrayList<>();
   for(int id:new int[]{-1,-2,-3}){
    Button button=dialog.getButton(id);
    if(button==null)continue;
@@ -77,17 +78,43 @@ final class Ui {
    button.setTextSize(14);
    button.setMinimumHeight(dp(TOUCH));button.setMinimumWidth(dp(TOUCH));
    button.setMinHeight(dp(TOUCH));
-   button.setPadding(dp(DIALOG_BUTTON_PADDING),0,dp(DIALOG_BUTTON_PADDING),0);
-   ViewGroup.LayoutParams params=button.getLayoutParams();
-   params.height=dp(TOUCH);
-   if(params instanceof ViewGroup.MarginLayoutParams)((ViewGroup.MarginLayoutParams)params).setMarginStart(dp(DIALOG_BUTTON_GAP));
-   button.setLayoutParams(params);
-   View panel=(View)button.getParent();
-   panel.setPaddingRelative(dp(DIALOG_GUTTER-DIALOG_BUTTON_GAP),panel.getPaddingTop(),dp(DIALOG_GUTTER),panel.getPaddingBottom());
+   button.setSingleLine(false);
+   button.setEllipsize(null);
    int inset=dp((TOUCH-DIALOG_BUTTON_HEIGHT)/2);
    button.setBackground(new InsetDrawable(ripple(primary?shape(accent,16):outline(surface,16)),0,inset,0,inset));
+   button.setPadding(dp(BUTTON_HORIZONTAL_PADDING),inset,dp(BUTTON_HORIZONTAL_PADDING),inset);
+   buttons.add(button);
    Motion.dialogButton(button);
   }
+  if(!buttons.isEmpty()&&buttons.get(0).getParent() instanceof LinearLayout){
+   LinearLayout panel=(LinearLayout)buttons.get(0).getParent();
+   panel.setPaddingRelative(dp(DIALOG_GUTTER),panel.getPaddingTop(),dp(DIALOG_GUTTER),panel.getPaddingBottom());
+   int needed=dp(2*DIALOG_GUTTER+DIALOG_BUTTON_GAP*(buttons.size()-1));
+   for(Button button:buttons)needed+=buttonWidth(button);
+   final int requiredWidth=needed;
+   layoutDialogActions(panel,buttons,requiredWidth>window.getAttributes().width);
+   panel.addOnLayoutChangeListener((v,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
+    if(right-left!=oldRight-oldLeft)layoutDialogActions(panel,buttons,requiredWidth>right-left);
+   });
+  }
   Motion.dialog(window.getDecorView());
+ }
+
+ int buttonWidth(Button button){
+  return Math.max(dp(TOUCH),(int)Math.ceil(android.text.Layout.getDesiredWidth(button.getText(),button.getPaint()))
+   +button.getPaddingStart()+button.getPaddingEnd());
+ }
+ private void layoutDialogActions(LinearLayout panel,java.util.List<Button> buttons,boolean stack){
+  panel.setOrientation(stack?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
+  panel.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
+  int visible=0;
+  for(int i=0;i<panel.getChildCount();i++){
+   View child=panel.getChildAt(i);
+   if(!(child instanceof Button)){child.setVisibility(View.GONE);continue;}
+   if(!buttons.contains(child))continue;
+   LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(stack?-1:-2,-2);
+   if(visible++>0){if(stack)params.topMargin=dp(DIALOG_BUTTON_GAP);else params.setMarginStart(dp(DIALOG_BUTTON_GAP));}
+   child.setLayoutParams(params);
+  }
  }
 }

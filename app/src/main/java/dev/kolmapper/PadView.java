@@ -23,6 +23,9 @@ final class PadView extends View {
  final SparseBooleanArray keys=new SparseBooleanArray();
  final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
  final Path shell=new Path();
+ final Path switchShell=new Path();
+ private enum Layout { GENERIC, PLAYSTATION, XBOX, SWITCH }
+ private Layout layout=Layout.GENERIC;
  final int glow;
  final LinearGradient coating;
  final Typeface lettering=Typeface.create("sans-serif-medium",Typeface.NORMAL);
@@ -49,6 +52,12 @@ final class PadView extends View {
   shell.cubicTo(192,96,202,95,212,108);shell.cubicTo(233,131,248,146,257,126);
   shell.cubicTo(262,115,254,79,246,55);shell.cubicTo(239,32,224,27,202,32);
   shell.cubicTo(164,42,115,42,81,32);shell.close();
+  switchShell.moveTo(79,31);switchShell.cubicTo(52,28,34,41,29,67);
+  switchShell.cubicTo(22,90,18,129,29,137);switchShell.cubicTo(47,150,69,117,79,106);
+  switchShell.cubicTo(87,97,107,99,122,100);switchShell.lineTo(161,100);
+  switchShell.cubicTo(184,99,194,98,203,108);switchShell.cubicTo(220,129,244,150,254,135);
+  switchShell.cubicTo(268,113,252,63,246,49);switchShell.cubicTo(234,27,216,29,199,32);
+  switchShell.quadTo(139,34,79,31);switchShell.close();
   setContentDescription("Kolun canlı tuş ve çubuk görünümü");
  }
  private static float clamp(float value,float min,float max){return Math.max(min,Math.min(max,value));}
@@ -96,6 +105,21 @@ final class PadView extends View {
  }
  @Override protected void onDetachedFromWindow(){resetView();super.onDetachedFromWindow();}
  void reset(){keys.clear();lx=ly=rx=ry=hx=hy=lt=rt=0;invalidate();}
+ void layoutFor(String deviceName){
+  String name=deviceName.toLowerCase(java.util.Locale.ROOT);
+  if(name.contains("dualshock")||name.contains("dualsense")||name.contains("playstation")||name.contains("wireless controller")&&name.contains("sony"))layout=Layout.PLAYSTATION;
+  else if(name.contains("xbox")||name.contains("x-box"))layout=Layout.XBOX;
+  else if(name.contains("switch")||name.contains("nintendo")||name.equals("pro controller"))layout=Layout.SWITCH;
+  else layout=Layout.GENERIC;
+  invalidate();
+ }
+ String displayLabel(int code){
+  if(layout==Layout.PLAYSTATION){
+   switch(code){case KEYCODE_BUTTON_A:return "×";case KEYCODE_BUTTON_B:return "○";
+    case KEYCODE_BUTTON_X:return "□";case KEYCODE_BUTTON_Y:return "△";default:break;}
+  }
+  return label(code);
+ }
  static String label(int code){
   switch(code){
    case KEYCODE_BUTTON_A:return "A";case KEYCODE_BUTTON_B:return "B";
@@ -173,20 +197,29 @@ final class PadView extends View {
   shoulder(c,48,6,"L2",KEYCODE_BUTTON_L2,lt);shoulder(c,200,6,"R2",KEYCODE_BUTTON_R2,rt);
   shoulder(c,44,19,"L1",KEYCODE_BUTTON_L1,0);shoulder(c,204,19,"R1",KEYCODE_BUTTON_R1,0);
   c.restore();
-  c.save();c.translate(0,4);color(ui.bodyBottom);c.drawPath(shell,p);c.restore();
-  color(ui.raised);p.setShader(coating);c.drawPath(shell,p);p.setShader(null);
-  p.setColor(ui.padEdge);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.8f);c.drawPath(shell,p);
+  Path body=layout==Layout.SWITCH?switchShell:shell;
+  c.save();c.translate(0,4);color(ui.bodyBottom);c.drawPath(body,p);c.restore();
+  color(ui.raised);p.setShader(coating);c.drawPath(body,p);p.setShader(null);
+  p.setColor(ui.padEdge);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.8f);c.drawPath(body,p);
   c.translate(parallaxX,parallaxY);
-  stick(c,73,59,lx,ly,KEYCODE_BUTTON_THUMBL);stick(c,170,83,rx,ry,KEYCODE_BUTTON_THUMBR);
-  direction(c,102,72,KEYCODE_DPAD_UP,hy<-.5f);direction(c,102,88,KEYCODE_DPAD_DOWN,hy>.5f);
-  direction(c,94,80,KEYCODE_DPAD_LEFT,hx<-.5f);direction(c,110,80,KEYCODE_DPAD_RIGHT,hx>.5f);
-  face(c,"Y",KEYCODE_BUTTON_Y,210,43);face(c,"A",KEYCODE_BUTTON_A,210,73);
-  face(c,"X",KEYCODE_BUTTON_X,195,58);face(c,"B",KEYCODE_BUTTON_B,225,58);
+  boolean ps=layout==Layout.PLAYSTATION;
+  stick(c,ps?108:73,ps?83:59,lx,ly,KEYCODE_BUTTON_THUMBL);
+  stick(c,172,83,rx,ry,KEYCODE_BUTTON_THUMBR);
+  int dx=ps?73:102,dy=ps?58:80;
+  direction(c,dx,dy-8,KEYCODE_DPAD_UP,hy<-.5f);direction(c,dx,dy+8,KEYCODE_DPAD_DOWN,hy>.5f);
+  direction(c,dx-8,dy,KEYCODE_DPAD_LEFT,hx<-.5f);direction(c,dx+8,dy,KEYCODE_DPAD_RIGHT,hx>.5f);
+  boolean nintendo=layout==Layout.SWITCH;
+  int top=nintendo?KEYCODE_BUTTON_X:KEYCODE_BUTTON_Y,bottom=nintendo?KEYCODE_BUTTON_B:KEYCODE_BUTTON_A;
+  int left=nintendo?KEYCODE_BUTTON_Y:KEYCODE_BUTTON_X,right=nintendo?KEYCODE_BUTTON_A:KEYCODE_BUTTON_B;
+  face(c,displayLabel(top),top,210,43);face(c,displayLabel(bottom),bottom,210,73);
+  face(c,displayLabel(left),left,195,58);face(c,displayLabel(right),right,225,58);
+  if(layout==Layout.XBOX)face(c,"X",KEYCODE_BUTTON_MODE,140,43);
+  if(nintendo)face(c,"⌂",KEYCODE_BUTTON_MODE,160,76);
   face(c,"−",KEYCODE_BUTTON_SELECT,125,57);face(c,"+",KEYCODE_BUTTON_START,155,57);
   if(hasExtra1)face(c,"1",KEYCODE_BUTTON_1,100,39);
   if(hasExtra2)face(c,"2",KEYCODE_BUTTON_2,179,39);
   if(ultimate){color(ui.border);c.drawRoundRect(133,84,147,86,1,1,p);}
-  circle(c,140,72,4,keys.get(KEYCODE_BUTTON_MODE)?glow:ui.background);
-  circle(c,140,47,1.6f,connected?ui.success:ui.muted);c.restore();
+  if(layout!=Layout.XBOX&&!nintendo)circle(c,140,72,4,keys.get(KEYCODE_BUTTON_MODE)?glow:ui.background);
+  circle(c,140,layout==Layout.XBOX?58:47,1.6f,connected?ui.success:ui.muted);c.restore();
  }
 }

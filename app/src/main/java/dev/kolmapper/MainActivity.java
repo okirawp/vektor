@@ -16,6 +16,7 @@ public class MainActivity extends Activity implements InputManager.InputDeviceLi
  static boolean isForeground(){return visible.get()!=null;}
  PadView pad;
  View connectionLamp;
+ View controllerHelp;
  TextView controllerTitle,controllerStatus,padFeedback;
  int padId=-1, identityVersion;
  String supportPage="";
@@ -64,7 +65,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
  void render(){
   if(body!=null)body.removeCallbacks(paintReadings);readingsQueued=false;
   readings=null;history=null;backupProgress=null;backupSpinner=null;
-  pad=null;controllerStatus=null;controllerTitle=null;padFeedback=null;padId=-1;identityVersion++;
+  pad=null;controllerStatus=null;controllerTitle=null;padFeedback=null;controllerHelp=null;padId=-1;identityVersion++;
   connectionLamp=null;ui=new Ui(this);getWindow().setStatusBarColor(ui.background);getWindow().setNavigationBarColor(ui.background);
   boolean compact=getResources().getConfiguration().screenHeightDp<420;
   getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(ui.background));body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setBackgroundColor(ui.background);body.setPadding(ui.dp(20),ui.dp(compact?6:14),ui.dp(20),ui.dp(compact?6:16));setContentView(body);applySystemBarStyle();
@@ -148,9 +149,9 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
    initial.setGravity(Gravity.CENTER);initial.setBackground(ui.shape(ui.raised,10));mark=initial;}
   mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
   LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40));ip.rightMargin=ui.dp(12);tile.addView(mark,ip);
-  LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);TextView title=ui.text(name,16,true);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);words.addView(title);int count=Binding.load(this,pkg).size();TextView detail=ui.chip(count==0?"Atama yok":count+" kontrol");words.addView(detail,new LinearLayout.LayoutParams(-2,-2));tile.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+  LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);TextView title=ui.text(name,16,true);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);words.addView(title);int count=Binding.load(this,pkg).size();TextView detail=ui.chip(count==0?"Atama yok":count+" kontrol",count>0);words.addView(detail,new LinearLayout.LayoutParams(-2,-2));tile.addView(words,new LinearLayout.LayoutParams(0,-2,1));
   Button open=ui.button(count>0?"Aç":"Kontrol ekle",count>0,()->{if(count==0)GuideState.request(this,pkg);openPackage(pkg);});
-  open.setContentDescription(name+" uygulamasını aç");tile.addView(open,new LinearLayout.LayoutParams(-2,-2));return tile;
+  open.setContentDescription(name+" uygulamasını aç");open.setPadding(0,0,0,0);tile.addView(open,new LinearLayout.LayoutParams(ui.dp(Ui.ACTION_WIDTH),ui.dp(Ui.ACTION_HEIGHT)));return tile;
  }
  void navigate(String pkg){
   boolean back=pkg.isEmpty();
@@ -189,18 +190,19 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   card.setBackground(ui.shape(ui.surface,18));
   boolean expanded=supportPage.equals("controller");
   LinearLayout heading=new LinearLayout(this);
-  heading.setGravity(Gravity.CENTER_VERTICAL);
+  heading.setGravity(Gravity.TOP);
   LinearLayout identity=new LinearLayout(this);identity.setOrientation(LinearLayout.VERTICAL);
   LinearLayout statusLine=new LinearLayout(this);statusLine.setGravity(Gravity.CENTER_VERTICAL);
   connectionLamp=new View(this);connectionLamp.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
   LinearLayout.LayoutParams lampSize=new LinearLayout.LayoutParams(ui.dp(8),ui.dp(8));lampSize.rightMargin=ui.dp(8);
   statusLine.addView(connectionLamp,lampSize);
-  controllerTitle=ui.text("",expanded?24:17,true);statusLine.addView(controllerTitle);identity.addView(statusLine);
-  controllerStatus=ui.caption("");identity.addView(controllerStatus);
+  controllerTitle=ui.text("",expanded?24:17,true);if(!expanded){controllerTitle.setMinHeight(ui.dp(Ui.TOUCH));controllerTitle.setGravity(Gravity.CENTER_VERTICAL);}statusLine.addView(controllerTitle);identity.addView(statusLine);
+  controllerStatus=ui.caption("");
   heading.addView(identity,new LinearLayout.LayoutParams(0,-2,1));
   if(!expanded)heading.addView(footerLink("Giriş testi  ›",()->openSupport("controller")));
   card.addView(heading);
-  pad=new PadView(this,ui);card.addView(pad,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:84)));
+  card.addView(controllerStatus);
+  pad=new PadView(this,ui);card.addView(pad,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:Ui.HOME_PAD_HEIGHT)));
   padFeedback=ui.caption("");padFeedback.setGravity(Gravity.CENTER);
   if(expanded)card.addView(padFeedback);
   LinearLayout panes=new LinearLayout(this);boolean wide=expanded&&getResources().getConfiguration().screenWidthDp>=840;
@@ -215,7 +217,14 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
    logHeader.addView(footerLink("Sıfırla",()->{inputLog.clear();refreshDiagnostics();}));metrics.addView(logHeader);
    history=ui.caption("");metrics.addView(history);panes.addView(metrics,new LinearLayout.LayoutParams(wide?0:-1,-2,wide?1:0));
   }
-  rows.addView(panes);updateControllerStatus();
+  rows.addView(panes);
+  if(expanded){
+   LinearLayout help=ui.card(rows);
+   help.addView(ui.text("Kolu Bluetooth veya USB ile bağla",Ui.HELP_TITLE,true));
+   help.addView(ui.caption("Bluetooth için Android ayarlarından kolunu eşleştir. Kablolu kullanım için veri aktarımını destekleyen bir USB kablosu kullan."));
+   controllerHelp=help;
+  }
+  updateControllerStatus();
  }
  boolean dirtyReadings;
  boolean readingsQueued;
@@ -239,6 +248,8 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
    if(down.length()>0)down.append(" + ");down.append(PadView.label(pad.keys.keyAt(i)));
   }
   padFeedback.setText(down.length()==0?(pad.connected?"Basılı tuş yok":"Kol bekleniyor"):"Basılı  ·  "+down);
+  controllerHelp.setVisibility(pad.connected?View.GONE:View.VISIBLE);
+  readings.setTextColor(pad.connected?ui.text:ui.muted);
   readings.setText(pad.connected?String.format(Locale.getDefault(),
    "L   X %+.2f    Y %+.2f     •     R   X %+.2f    Y %+.2f\nL2   %s         R2   %s%s",
    pad.lx,pad.ly,pad.rx,pad.ry,triggerReading(hasLT,pad.lt,KeyEvent.KEYCODE_BUTTON_L2),
@@ -364,9 +375,12 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
  }
  void shareBackup(){
   if(backupBusy)return;
-  new AlertDialog.Builder(ui.dialogContext()).setTitle("Yedeği paylaş")
+  AlertDialog dialog=new AlertDialog.Builder(ui.dialogContext()).setTitle("Yedeği paylaş")
    .setMessage("Önce .rota dosyasını kaydet. Ardından dosyayı göndereceğin uygulamayı seç.")
-   .setNegativeButton("Vazgeç",null).setPositiveButton("Konum seç",(d,w)->createBackupFile(82)).show();
+   .setNegativeButton("Vazgeç",null).setPositiveButton("Konum seç",(d,w)->createBackupFile(82)).create();
+  dialog.getWindow().setWindowAnimations(0);
+  dialog.show();
+  ui.finishDialog(dialog);
  }
  void renderSupport(){
   TextView back=footerLink("‹  Geri",()->openSupport(""));

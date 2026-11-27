@@ -162,7 +162,19 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   else{View decor=getWindow().getDecorView();int light=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;int flags=decor.getSystemUiVisibility();decor.setSystemUiVisibility(ui.dark?flags&~light:flags|light);}
  }
  LinearLayout homeGameTile(String pkg){
-  LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+  LinearLayout row=new LinearLayout(this){
+   @Override protected void onMeasure(int widthSpec,int heightSpec){
+    if(View.MeasureSpec.getMode(widthSpec)!=View.MeasureSpec.UNSPECIFIED){
+     TextView label=(TextView)getChildAt(1),count=(TextView)getChildAt(2);
+     LinearLayout.LayoutParams icon=(LinearLayout.LayoutParams)getChildAt(0).getLayoutParams();
+     int countWidth=(int)Math.ceil(android.text.Layout.getDesiredWidth(count.getText(),count.getPaint()))
+      +count.getPaddingStart()+count.getPaddingEnd();
+     int maximum=Math.max(0,View.MeasureSpec.getSize(widthSpec)-icon.width-icon.rightMargin-countWidth);
+     if(label.getMaxWidth()!=maximum)label.setMaxWidth(maximum);
+    }
+    super.onMeasure(widthSpec,heightSpec);
+   }
+  };row.setGravity(Gravity.CENTER_VERTICAL);
   LinearLayout tile=new LinearLayout(this){
    @Override protected void onMeasure(int widthSpec,int heightSpec){
     Button action=(Button)getChildAt(1);
@@ -188,7 +200,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
   LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40));ip.rightMargin=ui.dp(12);row.addView(mark,ip);
   TextView title=ui.text(name,16,true);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);
-  row.addView(title,new LinearLayout.LayoutParams(0,-2,1));
+  row.addView(title,new LinearLayout.LayoutParams(-2,-2));
   int count=Binding.load(this,pkg).size();
   TextView countText=ui.caption(count==0?"Atama yok":count+" kontrol");countText.setTextSize(Ui.PICKER_SUBTITLE);
   countText.setSingleLine();countText.setPaddingRelative(ui.dp(Ui.TAB_GAP),0,0,0);row.addView(countText);
@@ -230,7 +242,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
  void addController(LinearLayout rows){
   LinearLayout card=new LinearLayout(this);
   card.setOrientation(LinearLayout.VERTICAL);card.setPadding(ui.dp(16),ui.dp(10),ui.dp(16),ui.dp(8));
-  card.setBackground(ui.shape(ui.surface,18));
+  card.setBackground(ui.outline(ui.surface,Ui.CARD));
   boolean expanded=supportPage.equals("controller");
   LinearLayout heading=new LinearLayout(this);
   heading.setGravity(Gravity.TOP);
@@ -247,7 +259,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
    card.setOnClickListener(view->openSupport("controller"));
    card.setFocusable(true);
    card.setContentDescription("Döndürmek için dokun");
-   card.setBackground(ui.ripple(ui.shape(ui.surface,18)));
+   card.setBackground(ui.ripple(ui.outline(ui.surface,Ui.CARD)));
    heading.addView(footerLink("Giriş testi  ›",()->openSupport("controller")));
   }
   card.addView(heading);

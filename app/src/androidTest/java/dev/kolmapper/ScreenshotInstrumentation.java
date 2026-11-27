@@ -52,11 +52,20 @@ public final class ScreenshotInstrumentation extends Instrumentation {
     }
 
     private void tap(String description) throws Exception {
-        boolean clicked = onMain(() -> {
-            View action = find(activity.body, description);
-            return action != null && action.performClick();
-        });
-        if (!clicked) throw new AssertionError("İşlem bulunamadı: " + description);
+        waitForIdleSync();
+        long deadline=SystemClock.uptimeMillis()+5000;
+        do {
+            boolean clicked=onMain(()->{
+                View action=find(activity.body,description);
+                if(action==null||!action.isClickable())return false;
+                // CompoundButton toggles even when performClick returns false.
+                action.performClick();
+                return true;
+            });
+            if(clicked)return;
+            SystemClock.sleep(100);
+        } while(SystemClock.uptimeMillis()<deadline);
+        throw new AssertionError("İşlem bulunamadı: "+description);
     }
 
     private void capture(String file, String expectedText) throws Exception {

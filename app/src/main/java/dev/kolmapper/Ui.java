@@ -7,6 +7,8 @@ import android.content.res.ColorStateList;
 import android.view.*;
 import android.widget.*;
 final class Ui {
+ static final int DIALOG_RADIUS=24, ACTION_WIDTH=124, ACTION_HEIGHT=52, HOME_PAD_HEIGHT=124;
+ static final int DISCLOSURE_TITLE=17, DISCLOSURE_ARROW=24, HELP_TITLE=16;
  final Context context;final boolean dark;final int background,surface,text,muted,border,accent,accentSoft,onAccent,danger;
  static final int TOUCH=48,ORB=52,CARD=16,PANEL=20,ICON=24;
  final int accentText,raised,success,warning,signalError,bodyTop,bodyBottom,orbSurface,veil;
@@ -33,7 +35,8 @@ final class Ui {
  TextView text(String value,int size,boolean bold){TextView t=new TextView(context);t.setText(value);t.setTextColor(text);t.setTextSize(size);t.setFontFeatureSettings("kern, tnum");t.setPadding(0,dp(3),0,dp(3));t.setTypeface(Typeface.create(bold?"sans-serif-medium":"sans-serif",Typeface.NORMAL));return t;}
  TextView caption(String value){TextView t=text(value,14,false);t.setTextColor(muted);t.setLineSpacing(dp(3),1);return t;}
  TextView eyebrow(String value){TextView t=text(value,10,true);t.setTextColor(muted);t.setLetterSpacing(.12f);return t;}
- TextView chip(String value){TextView t=text(value,11,true);t.setTextColor(accentText);t.setBackground(shape(accentSoft,7));t.setPadding(dp(9),dp(5),dp(9),dp(5));t.setSingleLine();return t;}
+ TextView chip(String value){return chip(value,true);}
+ TextView chip(String value,boolean active){TextView t=text(value,11,true);t.setTextColor(active?accentText:muted);t.setBackground(shape(active?accentSoft:raised,7));t.setPadding(dp(9),dp(5),dp(9),dp(5));t.setSingleLine();return t;}
  Button button(String title,boolean primary,Runnable action){
   Button b=new Button(context){
    @Override public void setPressed(boolean pressed){if(pressed!=isPressed())Motion.press(this,pressed);super.setPressed(pressed);}
@@ -54,5 +57,26 @@ final class Ui {
  void addButton(LinearLayout parent,String title,boolean primary,Runnable action){Button b=button(title,primary,action);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(12);parent.addView(b,lp);}
  LinearLayout card(LinearLayout parent){LinearLayout c=new LinearLayout(context);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(20),dp(20),dp(20),dp(20));c.setBackground(outline(surface,22));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(20);parent.addView(c,lp);return c;}
  EditText number(LinearLayout parent,String label,int value){parent.addView(caption(label));EditText e=new EditText(context);e.setSingleLine();e.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);e.setText(Integer.toString(value));e.setTextColor(text);e.setTextSize(16);e.setBackground(outline(background,12));e.setPadding(dp(14),dp(10),dp(14),dp(10));e.setSelectAllOnFocus(true);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.bottomMargin=dp(12);parent.addView(e,lp);return e;}
- void finishDialog(android.app.AlertDialog dialog){Motion.enter(dialog.getWindow().getDecorView());dialog.getWindow().setBackgroundDrawable(shape(surface,24));dialog.getWindow().setDimAmount(.48f);dialog.getWindow().setLayout(Math.min(dp(560),context.getResources().getDisplayMetrics().widthPixels-dp(32)),-2);for(int id:new int[]{-1,-2,-3}){Button b=dialog.getButton(id);if(b!=null){b.setAllCaps(false);b.setTextColor(id==-3?danger:accent);b.setTextSize(14);}}}
+ void finishDialog(android.app.AlertDialog dialog){
+  Window window=dialog.getWindow();
+  window.setWindowAnimations(0);
+  window.setBackgroundDrawable(outline(surface,DIALOG_RADIUS));
+  window.setDimAmount(.48f);
+  window.setLayout(Math.min(dp(560),context.getResources().getDisplayMetrics().widthPixels-dp(32)),-2);
+  TextView message=dialog.findViewById(android.R.id.message);
+  if(message!=null)message.setTextColor(muted);
+  for(int id:new int[]{-1,-2,-3}){
+   Button button=dialog.getButton(id);
+   if(button==null)continue;
+   boolean primary=id==android.app.AlertDialog.BUTTON_POSITIVE;
+   button.setAllCaps(false);
+   button.setTextColor(primary?onAccent:id==android.app.AlertDialog.BUTTON_NEUTRAL?danger:text);
+   button.setTextSize(14);
+   button.setMinimumHeight(dp(TOUCH));button.setMinimumWidth(dp(TOUCH));
+   button.setPadding(dp(12),dp(8),dp(12),dp(8));
+   button.setBackground(ripple(primary?shape(accent,16):outline(surface,16)));
+   Motion.dialogButton(button);
+  }
+  Motion.dialog(window.getDecorView());
+ }
 }

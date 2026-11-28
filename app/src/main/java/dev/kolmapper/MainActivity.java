@@ -16,6 +16,7 @@ public class MainActivity extends Activity implements InputManager.InputDeviceLi
  static boolean isForeground(){return visible.get()!=null;}
  PadView pad;
  View connectionLamp;
+ AppCatalog catalog;
  AppPicker picker;
  Bundle restoredPicker;
  boolean pickerOpen,pickerMigration;
@@ -36,7 +37,7 @@ public class MainActivity extends Activity implements InputManager.InputDeviceLi
 boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog exitDialog;ActionIcon themeButton;
  Ui ui;LinearLayout body;boolean renderedReady,renderedSession,renderedLegacy;String renderedGame="";
  void refreshConnection(){if(pickerOpen&&body!=null)return;MapperService s=MapperService.current();if(body==null||renderedReady!=(s!=null)||renderedSession!=(s!=null&&s.sessionActive())||!renderedGame.equals(Profiles.selected(this))||renderedLegacy!=Profiles.hasLegacy(this))render();}
- @Override public void onCreate(Bundle state){if(state!=null){restoredPicker=state.getBundle("picker_state");pickerOpen=state.getBoolean("picker_open");pickerMigration=state.getBoolean("picker_migration");launchGuideAfterPick=state.getBoolean("picker_guided");profilePage=state.getString("profile_page","");supportPage=state.getString("support_page","");helpPage=state.getInt("guide_step",0);supportParent=state.getString("support_parent","");}ui=new Ui(this);setTheme(ui.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(state);if(android.os.Build.VERSION.SDK_INT>=34)installBackPreview();else if(android.os.Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,this::requestExit);render();}
+ @Override public void onCreate(Bundle state){if(state!=null){restoredPicker=state.getBundle("picker_state");pickerOpen=state.getBoolean("picker_open");pickerMigration=state.getBoolean("picker_migration");launchGuideAfterPick=state.getBoolean("picker_guided");profilePage=state.getString("profile_page","");supportPage=state.getString("support_page","");helpPage=state.getInt("guide_step",0);supportParent=state.getString("support_parent","");}ui=new Ui(this);setTheme(ui.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(state);catalog=new AppCatalog(this);if(android.os.Build.VERSION.SDK_INT>=34)installBackPreview();else if(android.os.Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,this::requestExit);render();}
  @Override protected void onResume(){super.onResume();visible=new java.lang.ref.WeakReference<>(this);MapperService s=MapperService.current();if(s!=null)s.onMainForeground();refreshConnection();if(!listeningForControllers){getSystemService(InputManager.class).registerInputDeviceListener(this,new android.os.Handler(getMainLooper()));listeningForControllers=true;}updateControllerStatus();}
  @Override protected void onPause(){if(listeningForControllers){getSystemService(InputManager.class).unregisterInputDeviceListener(this);listeningForControllers=false;}if(visible.get()==this)visible.clear();MapperService s=MapperService.current();if(s!=null&&!isChangingConfigurations())s.onMainBackground();super.onPause();}
  @Override protected void onSaveInstanceState(Bundle state){
@@ -82,8 +83,14 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
    picker.load();
    return;
   }
+  catalog.observe(null);
   LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);
-  LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);BrandMark brandImage=new BrandMark(this,ui.accentText);brandImage.setBackground(ui.shape(ui.surface,Ui.CARD));brandImage.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);brand.addView(brandImage,new LinearLayout.LayoutParams(ui.dp(40),ui.dp(40)));
+  LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);ImageView brandImage=new ImageView(this);
+  brandImage.setImageResource(ui.dark?R.drawable.brand_asset:R.drawable.header_logo_light);
+  brandImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+  brandImage.setBackground(ui.shape(ui.surface,Ui.CARD));brandImage.setClipToOutline(true);
+  brandImage.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+  brand.addView(brandImage,new LinearLayout.LayoutParams(ui.dp(Ui.HEADER_LOGO),ui.dp(Ui.HEADER_LOGO)));
   TextView title=ui.text("Vektör",28,true);title.setLetterSpacing(-.035f);title.setSingleLine();title.setEllipsize(TextUtils.TruncateAt.END);LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(0,-2,1);titleLp.leftMargin=ui.dp(10);brand.addView(title,titleLp);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
   themeButton=new ActionIcon(this,ui,ui.dark?ActionIcon.SUN:ActionIcon.MOON,false,ui.dark?"Açık temaya geç":"Koyu temaya geç",()->theme(!ui.dark));header.addView(themeButton,new LinearLayout.LayoutParams(ui.dp(48),ui.dp(48)));header.addView(new ActionIcon(this,ui,ActionIcon.SETTINGS,false,"Ayarlar",()->openSupport("settings")),new LinearLayout.LayoutParams(ui.dp(48),ui.dp(48)));body.addView(header,new LinearLayout.LayoutParams(-1,ui.dp(56)));
   MapperService service=MapperService.current();boolean ready=service!=null,active=ready&&service.sessionActive();String game=Profiles.selected(this);boolean legacy=Profiles.hasLegacy(this);renderedReady=ready;renderedSession=active;renderedGame=game;renderedLegacy=legacy;
@@ -264,7 +271,10 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   }
   card.addView(heading);
   card.addView(controllerStatus);
-  pad=new PadView(this,ui,expanded);card.addView(pad,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:Ui.HOME_PAD_HEIGHT)));
+  pad=new PadView(this,ui,expanded);
+  FrameLayout preview=new FrameLayout(this);preview.addView(pad,new FrameLayout.LayoutParams(-1,-1));
+  pad.attachModel(preview);
+  card.addView(preview,new LinearLayout.LayoutParams(-1,ui.dp(expanded?200:Ui.HOME_PAD_HEIGHT)));
   if(!expanded){
    TextView hint=ui.caption("Döndürmek için dokun");hint.setGravity(Gravity.CENTER);
    card.addView(hint);
@@ -479,7 +489,7 @@ boolean listeningForControllers,launchGuideAfterPick;int helpPage;AlertDialog ex
   super.onConfigurationChanged(config);render();
  }
  @Override public void onBackPressed(){requestExit();}
- @Override protected void onDestroy(){if(exitDialog!=null)exitDialog.dismiss();if(isFinishing()&&!isChangingConfigurations()){SessionContinuity.clear();MapperService s=MapperService.current();if(s!=null)s.endSession("app_closed");}super.onDestroy();}
+ @Override protected void onDestroy(){if(catalog!=null)catalog.close();if(exitDialog!=null)exitDialog.dismiss();if(isFinishing()&&!isChangingConfigurations()){SessionContinuity.clear();MapperService s=MapperService.current();if(s!=null)s.endSession("app_closed");}super.onDestroy();}
  void showPrivacy(){openSupport("privacy");}
  void showBackups(){openSupport("backups");}
  void exportBackup(){createBackupFile(80);}

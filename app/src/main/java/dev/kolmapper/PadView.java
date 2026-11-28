@@ -9,15 +9,11 @@ import static android.view.MotionEvent.*;
 
 /** Activity-only diagram. It never injects input or changes bindings. */
 final class PadView extends View {
- interface Renderer {
-  void draw(Canvas canvas,PadView state);
-  default void setVisible(boolean visible){}
-  default void release(){}
+ interface ModelView {
+  void requestFrame();
+  void setVisible(boolean visible);
  }
- interface ModelFactory {
-  Renderer create(Context context,String asset);
- }
- private final Renderer renderer;
+ private ModelView model;
  private final boolean interactive;
  private final ScaleGestureDetector pinch;
  private final Camera camera=new Camera();
@@ -38,29 +34,7 @@ final class PadView extends View {
  boolean connected;
  boolean ultimate,hasExtra1,hasExtra2;
  PadView(Context c,Ui ui,boolean interactive){
-  this(c,ui,interactive,rendererFor(c));
- }
- private static Renderer rendererFor(Context context){
-  try{
-   String[] assets=context.getAssets().list("");
-   if(assets!=null)for(String model:assets){
-    if(!model.endsWith(".glb"))continue;
-    for(ModelFactory factory:java.util.ServiceLoader.load(ModelFactory.class)){
-     Renderer renderer=factory.create(context,model);
-     if(renderer!=null)return renderer;
-    }
-   }
-  }catch(java.io.IOException|java.util.ServiceConfigurationError|RuntimeException e){
-   android.util.Log.w("VektorPreview","Model önizlemesi yüklenemedi",e);
-  }
-  return (canvas,state)->state.drawLayers(canvas);
- }
- float pitch(){return tiltX;}
- float yaw(){return tiltY;}
- float zoom(){return zoom;}
- // A GLB renderer can be supplied here without changing the input preview or mapper.
- PadView(Context c,Ui ui,boolean interactive,Renderer renderer){
-  super(c);this.ui=ui;glow=ui.accent;this.interactive=interactive;this.renderer=renderer;
+  super(c);this.ui=ui;glow=ui.accent;this.interactive=interactive;
   pinch=new ScaleGestureDetector(c,new ScaleGestureDetector.SimpleOnScaleGestureListener(){
    @Override public boolean onScale(ScaleGestureDetector detector){
     zoom=clamp(zoom*detector.getScaleFactor(),Motion.PAD_MIN_ZOOM,Motion.PAD_MAX_ZOOM);
@@ -118,18 +92,33 @@ final class PadView extends View {
   settling.addUpdateListener(value->{float fraction=(Float)value.getAnimatedValue();tiltX=x*fraction;tiltY=y*fraction;invalidate();});
   settling.start();
  }
+ void attachModel(android.widget.FrameLayout container){
+  String asset=ui.dark?"controller-dark.glb":"controller-light.glb";
+  try(java.io.InputStream available=getContext().getAssets().open(asset)){
+   Class<?> optional=Class.forName("dev.kolmapper.FilamentPadPreview");
+   model=(ModelView)optional.getDeclaredConstructor(android.widget.FrameLayout.class,PadView.class,String.class)
+    .newInstance(container,this,asset);
+  }catch(java.io.FileNotFoundException ignored){
+   // A build without the paired GLB assets uses the local drawing.
+  }catch(ReflectiveOperationException|java.io.IOException|LinkageError e){
+   android.util.Log.w("VektorPreview","Model önizlemesi başlatılamadı",e);
+  }
+ }
+ float pitch(){return tiltX;}
+ float yaw(){return tiltY;}
+ float zoom(){return zoom;}
  @Override protected void onVisibilityChanged(View changedView,int visibility){
   super.onVisibilityChanged(changedView,visibility);
   if(visibility!=VISIBLE)resetView();
-  if(renderer!=null)renderer.setVisible(isShown()&&getWindowVisibility()==VISIBLE);
+  if(model!=null)model.setVisible(isShown()&&getWindowVisibility()==VISIBLE);
  }
  @Override protected void onWindowVisibilityChanged(int visibility){
   super.onWindowVisibilityChanged(visibility);
   if(visibility!=VISIBLE)resetView();
-  if(renderer!=null)renderer.setVisible(isShown()&&getWindowVisibility()==VISIBLE);
+  if(model!=null)model.setVisible(isShown()&&getWindowVisibility()==VISIBLE);
  }
- @Override protected void onAttachedToWindow(){super.onAttachedToWindow();renderer.setVisible(isShown());}
- @Override protected void onDetachedFromWindow(){resetView();renderer.release();super.onDetachedFromWindow();}
+ @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(model!=null)model.setVisible(isShown());}
+ @Override protected void onDetachedFromWindow(){resetView();if(model!=null)model.setVisible(false);super.onDetachedFromWindow();}
  void reset(){keys.clear();lx=ly=rx=ry=hx=hy=lt=rt=0;invalidate();}
  void layoutFor(String deviceName){
   String name=deviceName.toLowerCase(java.util.Locale.ROOT);
@@ -207,7 +196,7 @@ final class PadView extends View {
  void direction(Canvas c,int x,int y,int key,boolean axis){
   color(keys.get(key)||axis?glow:ui.background);c.drawRoundRect(x-4,y-4,x+4,y+4,1.5f,1.5f,p);
  }
- @Override protected void onDraw(Canvas c){renderer.draw(c,this);}
+ @Override protected void onDraw(Canvas c){drawLayers(c);if(model!=null)model.requestFrame();}
  private void drawLayers(Canvas c){
   boolean depth=canRotate();
   float scale=Math.min(getWidth()/300f,getHeight()/164f)*(depth?zoom:1f);

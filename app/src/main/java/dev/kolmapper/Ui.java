@@ -7,6 +7,7 @@ import android.content.res.ColorStateList;
 import android.view.*;
 import android.widget.*;
 final class Ui {
+ static final int HEADER_LOGO=40;
  static final int SECTION_GAP=24, PICKER_SECTION_GAP=12, TAB_GAP=8, LIBRARY_ROW=64;
  static final int AXIS_SIZE=104, AXIS_PLOT=44, TRIGGER_BAR=4;
  static final int PICKER_ROW=60, PICKER_ICON=40, PICKER_GAP=8, PICKER_LABEL=15, PICKER_SUBTITLE=12;

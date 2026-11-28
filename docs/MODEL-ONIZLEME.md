@@ -1,7 +1,11 @@
-# İsteğe bağlı kol modeli
+# Temaya göre 3D kol
 
-Önizleme varsayılan olarak katmanlı Canvas çizimini kullanır. Uygulama bir GLB dosyası olmadan Filament veya SceneView yüklemez.
+Koyu temada `app/src/main/assets/controller-dark.glb`, açık temada `app/src/main/assets/controller-light.glb` kullanılır. İki dosya birlikte bulunduğunda derleme Filament önizlemesini ve bağımlılıklarını ekler. Dosyalar hazır olmadan Filament kodunu derlemek için `./gradlew -PverifyPreview3d=true :app:assembleDebug` komutunu kullan.
 
-Bir model entegrasyonu için GLB dosyasını `app/src/main/assets/` köküne koy. Motor bağımlılığını o modelle birlikte ekle. `dev.kolmapper.PadView.ModelFactory` uygulayan sağlayıcıyı `META-INF/services/dev.kolmapper.PadView$ModelFactory` servis kaydıyla tanıt. Sağlayıcı ilgili varlık yolunu alır ve `Renderer` döndürür. Bu bağdaştırıcı gerçek modelin animasyon bilgilerini PadView'dan okuyabilir. Kamera için `pitch()`, `yaw()` ve `zoom()`, giriş için PadView'ın tuş ve eksen durumları kullanılır. Görünmezken çizimi durdur ve ayrılırken motor kaynaklarını bırak.
+İndirilecek eserler **Xbox Inalambric Controller (Black)** ve **Xbox Inalambric Controller (White)**. Eser sahibi **Chistodrako._.** ve lisans **CC BY 4.0**. Kaynak modellerin resmi indirme bağlantıları Sketchfab oturumu gerektirir.
 
-Model sağlayıcısı bu sürümde yer almıyor. Bir model veya sağlayıcı bulunamazsa katmanlı çizim kullanılır.
+- [Siyah model](https://sketchfab.com/3d-models/xbox-inalambric-controller-black-29cc9624894a4f2cae7d2a675044db45)
+- [Beyaz model](https://sketchfab.com/3d-models/xbox-inalambric-controller-white-f18a70fc10414ef5a39b55de68f12823)
+- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+
+Ana ekranda poz sabittir. Giriş Testi aynı modelde sürükleme ve yakınlaştırma verisini kullanır. Gerçek kol adı ve giriş değerleri donanımdan okunur. Model dosyası eksikse, bozuksa veya yüzey hazır olmazsa katmanlı çizim görünür. Dosya okumak için internet izni gerekmez.

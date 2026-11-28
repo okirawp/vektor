@@ -8,7 +8,7 @@ import android.view.animation.*;
 final class Motion {
  static final int PRESS=80, RELEASE=140, COMPONENT=190, SCREEN=260, THEME=300, SUCCESS=380;
  static final float PAD_TILT=25f, PAD_MIN_ZOOM=.80f, PAD_MAX_ZOOM=1.35f;
- static final int PAD_RETURN=380, INPUT_CLOCK=1000;
+ static final int PAD_RETURN=380, INPUT_CLOCK=1000, MODEL_FRAME_TIMEOUT=5000;
  static final Interpolator EASE=new PathInterpolator(.2f,0f,.2f,1f);
  static final Interpolator RETURN=new OvershootInterpolator(.55f);
  static boolean enabled(Context context){

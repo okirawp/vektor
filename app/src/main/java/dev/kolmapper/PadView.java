@@ -104,6 +104,7 @@ final class PadView extends View {
    android.util.Log.w("VektorPreview","Model önizlemesi başlatılamadı",e);
   }
  }
+ boolean hasModelPreview(){return model!=null;}
  float pitch(){return tiltX;}
  float yaw(){return tiltY;}
  float zoom(){return zoom;}

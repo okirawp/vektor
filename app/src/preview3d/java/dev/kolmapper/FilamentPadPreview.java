@@ -37,7 +37,10 @@ final class FilamentPadPreview implements PadView.ModelView {
  FilamentPadPreview(FrameLayout parent,PadView pad,String asset){
   this.parent=parent;this.pad=pad;this.asset=asset;
   parent.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){
-   public void onViewAttachedToWindow(View view){requestFrame();}
+   public void onViewAttachedToWindow(View view){
+    if(viewer==null&&surface!=null){parent.removeView(surface);surface=null;}
+    requestFrame();
+   }
    public void onViewDetachedFromWindow(View view){setVisible(false);data=null;}
   });
  }

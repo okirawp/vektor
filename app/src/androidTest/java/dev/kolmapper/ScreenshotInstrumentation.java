@@ -24,10 +24,12 @@ public final class ScreenshotInstrumentation extends Instrumentation {
     private UiAutomation automation;
     private File output;
     private boolean large;
+    private String catalogFixture;
 
     @Override public void onCreate(Bundle args) {
         super.onCreate(args);
         large="true".equals(args.getString("large_font"));
+        catalogFixture=args.getString("catalog_fixture");
         start();
     }
 
@@ -83,6 +85,50 @@ public final class ScreenshotInstrumentation extends Instrumentation {
             if(SystemClock.uptimeMillis()>=end)throw new AssertionError("Uygulama listesi yüklenmedi");
             SystemClock.sleep(150);
         }
+    }
+
+    private void shell(String command) throws Exception {
+        try(java.io.InputStream stream=new android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command));
+            java.io.BufferedReader lines=new java.io.BufferedReader(new java.io.InputStreamReader(stream))){
+            for(String line;(line=lines.readLine())!=null;)if("Success".equals(line.trim()))return;
+            throw new AssertionError("Emülatör paket işlemi başarısız: "+command);
+        }
+    }
+
+    private void awaitProbe(boolean visible) throws Exception {
+        long end=SystemClock.uptimeMillis()+15000;
+        while(onMain(()->hasPickerRows(activity.body))!=visible){
+            if(SystemClock.uptimeMillis()>=end)throw new AssertionError("Paket değişikliği listeye yansımadı");
+            SystemClock.sleep(100);
+        }
+    }
+
+    private void verifyCatalogRefresh() throws Exception {
+        if(catalogFixture==null)return;
+        if(!catalogFixture.equals("/data/local/tmp/vektor-catalog-probe.apk"))
+            throw new IllegalArgumentException("QA APK yolu geçersiz");
+        onMain(()->{
+            android.widget.EditText search=(android.widget.EditText)findSearch(activity.body);
+            search.setText("dev.kolmapper.probe");
+            return null;
+        });
+        awaitProbe(false);
+        shell("pm install -t /data/local/tmp/vektor-catalog-probe.apk");
+        try{awaitProbe(true);}
+        finally{shell("pm uninstall dev.kolmapper.probe");}
+        awaitProbe(false);
+    }
+
+    private View findSearch(View root) {
+        if(root instanceof android.widget.EditText)return root;
+        if(root instanceof ViewGroup){
+            ViewGroup group=(ViewGroup)root;
+            for(int i=0;i<group.getChildCount();i++){
+                View found=findSearch(group.getChildAt(i));
+                if(found!=null)return found;
+            }
+        }
+        return null;
     }
 
     private void capture(String file, String expectedText) throws Exception {
@@ -155,11 +201,25 @@ public final class ScreenshotInstrumentation extends Instrumentation {
                 dragDisconnectedPad();
                 capture("02b-kol-dondurulmus","Giriş geçmişi");
                 tap("‹  Geri");
+                long firstPicker=SystemClock.elapsedRealtime();
                 tap("＋  Yeni uygulama ekle");
                 tap("Tümü");
                 tap("Sistem uygulamalarını göster");
                 waitForPickerRows();
+                long firstPickerMs=SystemClock.elapsedRealtime()-firstPicker;
                 capture("07-uygulama-secici","Sistem uygulamalarını göster");
+                tap("‹  Geri");
+                long reopenMs=onMain(()->{
+                    long start=SystemClock.elapsedRealtime();
+                    find(activity.body,"＋  Yeni uygulama ekle").performClick();
+                    if(find(activity.body,"Uygulamalar yükleniyor")!=null)
+                        throw new AssertionError("Hazır uygulama listesi yeniden yükleniyor");
+                    return SystemClock.elapsedRealtime()-start;
+                });
+                android.util.Log.i("VektorPicker","İlk seçim ve filtreleme "+firstPickerMs+" ms. Hazır listeyi açma "+reopenMs+" ms.");
+                result.putString("picker_timings","ilk_ve_filtre_ms="+firstPickerMs+" tekrar_ms="+reopenMs);
+                verifyCatalogRefresh();
+                if(catalogFixture!=null)result.putString("catalog_refresh","kurulum ve kaldırma doğrulandı");
                 tap("‹  Geri");
                 tap("Ayarlar");
                 tap("Gizlilik");

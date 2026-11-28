@@ -8,7 +8,7 @@ import android.view.animation.*;
 final class Motion {
  static final int PRESS=80, RELEASE=140, COMPONENT=190, SCREEN=260, THEME=300, SUCCESS=380;
  static final float PAD_TILT=25f, PAD_MIN_ZOOM=.80f, PAD_MAX_ZOOM=1.35f;
- static final int PAD_RETURN=380, INPUT_CLOCK=1000;
+ static final int PAD_RETURN=380, INPUT_CLOCK=1000, MODEL_FRAME_TIMEOUT=5000;
  static final Interpolator EASE=new PathInterpolator(.2f,0f,.2f,1f);
  static final Interpolator RETURN=new OvershootInterpolator(.55f);
  static boolean enabled(Context context){
@@ -50,11 +50,21 @@ final class Motion {
   if(!enabled(next.getContext())||previous==null||previous.getParent()!=null||previous.getWidth()==0)return;
   float distance=16*next.getResources().getDisplayMetrics().density*direction;
   int duration=direction==0?THEME:SCREEN;
-  root.getOverlay().add(previous);
-  previous.animate().setStartDelay(0).alpha(0).translationX(-distance).setDuration(duration).setInterpolator(EASE)
+  // Moving a Filament surface to the overlay can detach and destroy it twice.
+  if(!containsModelPreview(previous)){
+   root.getOverlay().add(previous);
+   previous.animate().setStartDelay(0).alpha(0).translationX(-distance).setDuration(duration).setInterpolator(EASE)
     .withEndAction(()->root.getOverlay().remove(previous)).start();
+  }
   next.setAlpha(direction==0?0:.35f);next.setTranslationX(distance);
   next.animate().alpha(1).translationX(0).setDuration(duration).setInterpolator(EASE).start();
+ }
+ private static boolean containsModelPreview(View view){
+  if(view instanceof PadView pad&&pad.hasModelPreview())return true;
+  if(view instanceof ViewGroup group){
+   for(int i=0;i<group.getChildCount();i++)if(containsModelPreview(group.getChildAt(i)))return true;
+  }
+  return false;
  }
  static void themeIcon(View view){if(enabled(view.getContext())){view.setRotation(-30);view.animate().rotation(0).setDuration(THEME).setInterpolator(EASE).start();}}
  static void reset(View view){view.animate().setListener(null).cancel();view.animate().setStartDelay(0);view.setScaleX(1);view.setScaleY(1);view.setAlpha(1);view.setTranslationY(0);view.setTranslationX(0);view.setRotation(0);}

@@ -1,11 +1,7 @@
 package dev.kolmapper;
 
-import android.content.Intent;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
-import android.graphics.drawable.Drawable;
+import dev.kolmapper.AppCatalog.Entry;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -123,31 +119,22 @@ final class AppPicker {
  }
 
  void load(){
-  new Thread(()->{
-   PackageManager pm=host.getPackageManager();
-   Map<String,Entry> unique=new HashMap<>();
-   Intent intent=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-   for(ResolveInfo candidate:pm.queryIntentActivities(intent,0)){
-    ApplicationInfo app=candidate.activityInfo.applicationInfo;
-    String pkg=app.packageName;
-    if(pkg.equals(host.getPackageName())||!candidate.activityInfo.enabled||!app.enabled||unique.containsKey(pkg))continue;
-    boolean game=app.category==ApplicationInfo.CATEGORY_GAME||(app.flags&ApplicationInfo.FLAG_IS_GAME)!=0;
-    boolean systemApp=(app.flags&ApplicationInfo.FLAG_SYSTEM)!=0;
-    unique.put(pkg,new Entry(pkg,app.loadLabel(pm).toString(),app.loadIcon(pm),game,systemApp));
-   }
-   List<Entry> discovered=new ArrayList<>(unique.values());
-   Collator collator=Collator.getInstance();
-   discovered.sort((a,b)->{int order=collator.compare(a.name,b.name);return order==0?a.pkg.compareTo(b.pkg):order;});
-   host.runOnUiThread(()->{
-    if(host.picker!=this||host.isDestroyed())return;
-    entries.addAll(discovered);loaded=true;refresh();
-   });
-  },"Vektor-app-picker").start();
+  host.catalog.observe(discovered->{
+   if(host.picker!=this||host.isDestroyed())return;
+   entries.clear();
+   if(discovered!=null)entries.addAll(discovered);
+   Set<String> available=new HashSet<>();
+   for(Entry entry:entries)available.add(entry.pkg);
+   if(discovered!=null){selected.retainAll(available);updateConfirm();}
+   loaded=true;refresh();
+   if(discovered==null)empty.setText("Uygulama listesi okunamadı.");
+  });
  }
 
  private void refresh(){
   if(!loaded)return;
-  String query=search.getText().toString().trim().toLowerCase(Locale.getDefault());
+  Locale locale=host.getResources().getConfiguration().getLocales().get(0);
+  String query=search.getText().toString().trim().toLowerCase(locale);
   boolean showSystem=system.isChecked();
   results.clear();
   for(Entry entry:entries){
@@ -167,6 +154,7 @@ final class AppPicker {
   }
   adapter.notifyDataSetChanged();
   skeleton.setVisibility(View.GONE);
+  empty.setText("Eşleşen uygulama yok.");
   empty.setVisibility(results.isEmpty()?View.VISIBLE:View.GONE);
  }
 
@@ -184,19 +172,12 @@ final class AppPicker {
   confirm.setVisibility(selected.isEmpty()?View.GONE:View.VISIBLE);
  }
 
- private static final class Entry {
-  final String pkg,name,searchKey;
-  final Drawable icon;
-  final boolean game,system;
-  Entry(String pkg,String name,Drawable icon,boolean game,boolean system){
-   this.pkg=pkg;this.name=name;this.icon=icon;this.game=game;this.system=system;
-   searchKey=(name+" "+pkg).toLowerCase(Locale.getDefault());
-  }
- }
  private final class Row extends LinearLayout {
   final ImageView icon=new ImageView(host);
   final TextView name=ui.text("",Ui.PICKER_LABEL,true),pkg=ui.caption(""),badge=ui.caption("");
   final CheckBox check=new CheckBox(host);
+  Entry bound;
+  Entry displayed;
   Row(){
    super(host);setGravity(Gravity.CENTER_VERTICAL);setMinimumHeight(ui.dp(Ui.PICKER_ROW));
    setPaddingRelative(ui.dp(Ui.PICKER_GAP),0,ui.dp(Ui.PICKER_GAP),0);
@@ -214,7 +195,14 @@ final class AppPicker {
   }
   void bind(Entry entry){
    boolean exists=added.contains(entry.pkg),checked=selected.contains(entry.pkg);
-   name.setText(entry.name);pkg.setText(entry.pkg);icon.setImageDrawable(entry.icon);
+   name.setText(entry.name);pkg.setText(entry.pkg);
+   if(bound!=entry){
+    bound=entry;displayed=null;icon.setImageResource(android.R.drawable.sym_def_app_icon);
+   }
+   if(displayed!=entry)host.catalog.icon(entry,state->{
+    if(bound!=entry||host.picker!=AppPicker.this)return;
+    displayed=entry;icon.setImageDrawable(state.newDrawable(host.getResources(),host.getTheme()));
+   });
    badge.setText("Eklendi");badge.setVisibility(exists?VISIBLE:GONE);
    check.setVisibility(!exists||migration?VISIBLE:GONE);
    check.setChecked(checked);setBackgroundColor(checked?ui.accentSoft:ui.background);

@@ -13,19 +13,20 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK araçlarını hazırla
+        uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
       - name: Android SDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Uygulama ve ekran testi APK’ları
-        run: scripts/ci/gradle.sh -PciScreenshots=true :app:assembleDebug :app:assembleDebugAndroidTest
+        run: scripts/ci/gradle.sh -PciScreenshots=true :app:assembleDebug :app:assembleDebugAndroidTest :probe:assembleDebug
       - name: Emülatör için KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Android 15 üzerinde altı ekranı doğrula ve kaydet
+      - name: Android 15 ekranlarını ve seçiciyi doğrula
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -36,7 +37,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Vektor-ekran-goruntuleri
-          path: ci-output/screenshots/*.png
+          path: |
+            ci-output/screenshots/*.png
+            ci-output/picker-timings.txt
           if-no-files-found: error
       - name: Sorunu özetle
         if: failure()
